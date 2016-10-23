@@ -1,0 +1,3 @@
+[submodule "freediag"]
+	path = freediag
+	url = https://github.com/fenugrec/freediag
