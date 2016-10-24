@@ -76,7 +76,8 @@ add_subdirectory(freediag external EXCLUDE_FROM_ALL)
 #link_directories(${PROJECT_BINARY_DIR}/freediag-prefix/src/freediag-build/scantool)
 
 #set (NISPROG_SRCS nisprog.c freediag/scantool/scantool_cli.c)
-set (NISPROG_SRCS nisprog.c scantool_bits.c)
+set (NISPROG_SRCS nisprog.c np_cli.c
+				scantool_bits.c)
 
 add_executable(nisprog ${NISPROG_SRCS})
 
