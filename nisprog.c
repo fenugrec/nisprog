@@ -1,6 +1,17 @@
-/* nisprog interactive CLI */
-/* copyright (c) fenugrec 2016
- * licensed under GPLv3
+/*
+ *	nisprog - Nissan ECU communications utility
+ *
+ * Copyright (c) 2014-2016 fenugrec
+ *
+ * Licensed under GPLv3
+ *
+ * This standalone program compiles against components of freediag, and provides
+ * Nissan-specific features aimed at dumping + reflashing ROMs.
+
+ * This is experimental, and only tested on a handful of ECUs. So far it hasn't caused any permanent damage.
+
+ * As-is, the code is of hack quality (low) and "trespasses" levels to go faster, skips some
+ * checks, and is generally not robust. But it does work on a few different hardware setups and ECUs.
  */
 
 
@@ -17,16 +28,10 @@
 #define NP_PROGNAME "nisprog"
 const struct cmd_tbl_entry np_cmdtable[];
 
-/* garbage to make freediag cli compile */
-const struct cmd_tbl_entry test_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
-const struct cmd_tbl_entry vag_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
-const struct cmd_tbl_entry dyno_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
-
 /*
  * Explain command line usage
  */
-static void do_usage (void)
-{
+static void do_usage (void) {
 	fprintf( stderr,	"nisprog utility for Nissan ECUs\n\n"
 						"  Usage -\n"
 						"	scantool [-h] [-f <file]\n\n"
@@ -41,9 +46,7 @@ int do_init(void) {
 	return 0;
 }
 
-int
-main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 	int i ;
 	const char *startfile=NULL;	/* optional commands to run at startup */
 
@@ -86,7 +89,8 @@ int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
 
 const struct cmd_tbl_entry np_cmdtable[]=
 {
-	{ "dm", "dumpmem", "dump memory from ROM/RAM address space",
+	{ "dm", "dm <file> <start> <#_of_bytes>", "dump memory from ROM/RAM address space\n"
+										"\tExample: \"dm asdf.bin 0 0x1000\" will dump the 4096 bytes of ROM to asdf.bin.",
 		cmd_dumpmem, 0, NULL},
 	{ NULL, NULL, NULL, NULL, 0, NULL}
 };

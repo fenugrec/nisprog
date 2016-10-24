@@ -11,6 +11,11 @@
 const int _RQST_HANDLE_WATCH = RQST_HANDLE_WATCH;  //Watching: add timestamp
 const int _RQST_HANDLE_DECODE = RQST_HANDLE_DECODE; 	//Just decode what arrived
 
+/* garbage to make freediag cli compile */
+const struct cmd_tbl_entry test_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
+const struct cmd_tbl_entry vag_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
+const struct cmd_tbl_entry dyno_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
+
 void l2raw_data_rcv(UNUSED(void *handle), struct diag_msg *msg) {
 	/*
 	 * Layer 2 call back, just print the data, this is used if we
