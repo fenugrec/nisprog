@@ -83,9 +83,12 @@ int main(int argc, char **argv) {
 
 const struct cmd_tbl_entry np_cmdtable[]=
 {
-		{ "dm", "dm <file> <start> <#_of_bytes>", "dump memory from ROM/RAM address space\n"
-								"\tExample: \"dm asdf.bin 0 0x1000\" will dump 4096 bytes of ROM to asdf.bin",
+		{ "dumpmem", "dumpmem <file> <start> <#_of_bytes>", "(shorthand: \"dm\") dump memory from ROM/RAM address space\n"
+								"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
 				cmd_dumpmem, 0, NULL},
+		{ "dm", "dm <file> <start> <#_of_bytes>", "dump memory from ROM/RAM address space\n"
+								"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
+				cmd_dumpmem, FLAG_HIDDEN, NULL},
 		{ "npt", "npt [testnum]", "temporary / testing commands. Refer to source code",
 				cmd_npt, 0, NULL},
 		{ NULL, NULL, NULL, NULL, 0, NULL}
