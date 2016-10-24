@@ -44,9 +44,17 @@ static void do_usage (void) {
 						"\n" ) ;
 }
 
+void nisecu_cleardata(struct nisecu_t *pne) {
+	pne->ecutype = NISECU_UNK;
+	sprintf((char *) pne->ecuid, "UNK");
+	pne->keyset = NULL;
+	pne->fblock_descr = NULL;
+	return;
+}
 
-int np_init(void) {
+static int np_init(void) {
 	npstate = NP_DISC;
+	nisecu_cleardata(&nisecu);
 	return 0;
 }
 

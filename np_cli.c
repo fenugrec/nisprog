@@ -111,10 +111,7 @@ int cmd_npconn(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 
-	nisecu.ecutype = NISECU_UNK;
-	nisecu.ecuid[0] = 0x00;
-	nisecu.keyset = NULL;
-	nisecu.fblock_descr = NULL;
+	nisecu_cleardata(&nisecu);
 
 	npstate = NP_NORMALCONN;
 
