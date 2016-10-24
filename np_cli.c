@@ -738,22 +738,6 @@ uint16_t encrypt_buf(uint8_t *buf, uint32_t len, uint32_t key) {
 	return cks;
 }
 
-// hax, get file length but restore position. taken from nislib
-static long flen(FILE *hf) {
-	long siz;
-	long orig;
-
-	if (!hf) return 0;
-	orig = ftell(hf);
-	if (orig < 0) return 0;
-
-	if (fseek(hf, 0, SEEK_END)) return 0;
-
-	siz = ftell(hf);
-	if (siz < 0) siz=0;
-	if (fseek(hf, orig, SEEK_SET)) return 0;
-	return siz;
-}
 
 /** do SID 34 80 transaction, ret 0 if ok
  *
@@ -958,7 +942,7 @@ int np_9(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 
-	file_len = (uint32_t) flen(fpl);
+	file_len = flen(fpl);
 	/* pad up to next multiple of 32 */
 	pl_len = (file_len + 31) & ~31;
 
