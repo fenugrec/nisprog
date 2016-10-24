@@ -14,7 +14,8 @@
 #include "nisprog.h"
 
 
-const char progname[]="nisprog";
+#define NP_PROGNAME "nisprog"
+const struct cmd_tbl_entry np_cmdtable[];
 
 /*
  * Explain command line usage
@@ -66,23 +67,24 @@ main(int argc, char **argv)
 
 	do_init();
 
-	//enter_cli(progname, startfile);
+	enter_cli(NP_PROGNAME, startfile, np_cmdtable);
 
 	/* Done */
 	return 0;
 }
 
-
-
 int
-cmd_up(UNUSED(int argc), UNUSED(char **argv))
+cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv))
 {
-	return CMD_UP;
+	return CMD_OK;
 }
 
 
-int
-cmd_exit(UNUSED(int argc), UNUSED(char **argv))
+
+const struct cmd_tbl_entry np_cmdtable[]=
 {
-	return CMD_EXIT;
-}
+	{ "dm", "dumpmem", "dump memory from ROM/RAM address space",
+		cmd_dumpmem, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}
+};
+
