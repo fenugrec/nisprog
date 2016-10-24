@@ -17,6 +17,11 @@
 #define NP_PROGNAME "nisprog"
 const struct cmd_tbl_entry np_cmdtable[];
 
+/* garbage to make freediag cli compile */
+const struct cmd_tbl_entry test_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
+const struct cmd_tbl_entry vag_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
+const struct cmd_tbl_entry dyno_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
+
 /*
  * Explain command line usage
  */

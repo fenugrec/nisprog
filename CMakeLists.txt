@@ -70,25 +70,20 @@ list(APPEND freediag_cmake_args
 )
 
 
-ExternalProject_Add(
-		freediag
-		SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/freediag/
-		CMAKE_ARGS ${freediag_cmake_args}
-		INSTALL_COMMAND ""
-)
+add_subdirectory(freediag external)
 
 
-link_directories(${PROJECT_BINARY_DIR}/freediag-prefix/src/freediag-build/scantool)
+#link_directories(${PROJECT_BINARY_DIR}/freediag-prefix/src/freediag-build/scantool)
 
 #set (NISPROG_SRCS nisprog.c freediag/scantool/scantool_cli.c)
-set (NISPROG_SRCS nisprog.c)
+set (NISPROG_SRCS nisprog.c scantool_bits.c)
 
 add_executable(nisprog ${NISPROG_SRCS})
 
-target_include_directories(nisprog PUBLIC ${PROJECT_BINARY_DIR}/freediag-prefix/src/freediag-build)
 target_include_directories(nisprog PUBLIC freediag/scantool)
+target_include_directories(nisprog PUBLIC ${PROJECT_BINARY_DIR}/external)
 
 target_link_libraries(nisprog diag freediagcli)
 
 
-add_dependencies(nisprog freediag)
+#add_dependencies(nisprog freediag)
