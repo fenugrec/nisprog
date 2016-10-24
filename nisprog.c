@@ -25,6 +25,7 @@
 #include "nisprog.h"
 
 FILE *dbg_stream=NULL;	//for nislib
+enum npstate_t npstate;
 
 
 #define NP_PROGNAME "nisprog"
@@ -36,7 +37,7 @@ const struct cmd_tbl_entry np_cmdtable[];
 static void do_usage (void) {
 	fprintf( stderr,	"nisprog utility for Nissan ECUs\n\n"
 						"  Usage -\n"
-						"	scantool [-h] [-f <file]\n\n"
+						"	nisprog [-h] [-f <file]\n\n"
 						"  Where:\n"
 						"\t-h   -- Display this help message\n"
 						"\t-f <file> Runs the commands from <file> at startup\n"
@@ -44,7 +45,8 @@ static void do_usage (void) {
 }
 
 
-int do_init(void) {
+int np_init(void) {
+	npstate = NP_DISC;
 	return 0;
 }
 
@@ -79,9 +81,7 @@ int main(int argc, char **argv) {
 				}
 		}
 
-		/* Input buffer */
-
-		do_init();
+		np_init();
 
 		enter_cli(NP_PROGNAME, startfile, np_cmdtable);
 

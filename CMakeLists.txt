@@ -6,7 +6,7 @@ set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "Default install pref
 set (TEMP_INSTPREFIX ${CMAKE_INSTALL_PREFIX})
 message("Using install prefix : ${CMAKE_INSTALL_PREFIX}")
 
-project(freediag)
+project(nisprog)
 
 #check if install prefix was clobbered
 if ( NOT(${CMAKE_INSTALL_PREFIX} STREQUAL ${TEMP_INSTPREFIX}))
