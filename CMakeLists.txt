@@ -70,7 +70,7 @@ list(APPEND freediag_cmake_args
 )
 
 
-add_subdirectory(freediag external)
+add_subdirectory(freediag external EXCLUDE_FROM_ALL)
 
 
 #link_directories(${PROJECT_BINARY_DIR}/freediag-prefix/src/freediag-build/scantool)
