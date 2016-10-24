@@ -106,17 +106,84 @@ int cmd_npconn(int argc, char **argv) {
 	}
 	if (argc > 1) return CMD_USAGE;
 
-	if (npstate != NP_DISC) {
+	if ((npstate != NP_DISC) ||
+		(global_state != STATE_IDLE)) {
 		printf("Error : already connected\n");
 		return CMD_FAILED;
 	}
 
 	nisecu_cleardata(&nisecu);
 
+
+	struct diag_l2_conn *d_conn;
+	struct diag_l0_device *dl0d = global_dl0d;
+	int rv;
+	flag_type flags = 0;
+
+	if (!dl0d) {
+		printf("No global L0. Please select + configure L0 first\n");
+		return CMD_FAILED;
+	}
+
+
+	/* Open interface using current L1 proto and hardware */
+	rv = diag_l2_open(dl0d, global_cfg.L1proto);
+	if (rv) {
+		fprintf(stderr, "Open failed for protocol %d on %s\n",
+			global_cfg.L1proto, dl0d->dl0->shortname);
+		return CMD_FAILED;
+	}
+
+	if (global_cfg.addrtype)
+		flags = DIAG_L2_TYPE_FUNCADDR;
+	else
+		flags = 0;
+
+	flags |= (global_cfg.initmode & DIAG_L2_TYPE_INITMASK) ;
+
+	d_conn = diag_l2_StartCommunications(dl0d, global_cfg.L2proto,
+		flags, global_cfg.speed, global_cfg.tgt, global_cfg.src);
+
+	if (d_conn == NULL) {
+		rv=diag_geterr();
+		diag_l2_close(dl0d);
+		printf("L2 StartComms failed\n");
+		return CMD_FAILED;
+	}
+
+	/* Connected ! */
+
+	global_l2_conn = d_conn;
+	global_state = STATE_CONNECTED;
 	npstate = NP_NORMALCONN;
+	printf("Connected to ECU !\n");
+
+	if (get_ecuid(nisecu.ecuid)) {
+		printf("Couldn't get ECUID ? Verify settings, connection mode etc.\n");
+		return CMD_FAILED;
+	}
+	printf("ECUID: %s\n", (char *) nisecu.ecuid);
 
 	return CMD_OK;
 }
+
+
+int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
+	if ((npstate == NP_DISC) ||
+		(global_state == STATE_IDLE)) {
+		return CMD_OK;
+	}
+
+	diag_l2_StopCommunications(global_l2_conn);
+	diag_l2_close(global_dl0d);
+
+	global_l2_conn = NULL;
+	global_state = STATE_IDLE;
+	npstate = NP_DISC;
+
+	return CMD_OK;
+}
+
 
 //np 1: try start diagsession, Nissan Repro style +
 // accesstimingparams (get limits + setvals)
