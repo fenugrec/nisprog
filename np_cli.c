@@ -25,6 +25,8 @@
 
 #include "scantool_cli.h"
 
+#include "nissutils/cli_utils/nislib.h"
+
 #define CURFILE "np_cli.c"	//XXXXX TODO: fix VS automagic macro setting
 
 #define NP_RX_EXTRATIMEOUT 20	//ms, added to all timeouts. Adjust to eliminiate read timeout errors
@@ -33,29 +35,6 @@
 /** fwd decls **/
 static int npkern_init(void);
 uint32_t read_ac(uint8_t *dest, uint32_t raddr, uint32_t len);
-
-/****/
-
-uint32_t readinvb(const uint8_t *buf) {
-	// ret 4 bytes at *buf with SH endianness
-	// " reconst_4B"
-	return buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3];
-}
-
-void writeinvb(uint32_t val, uint8_t *buf) {
-	//write 4 bytes at *buf with SH endianness
-	// "decomp_4B"
-	buf += 3;	//start at end
-	*(buf--) = val & 0xFF;
-	val >>= 8;
-	*(buf--) = val & 0xFF;
-	val >>= 8;
-	*(buf--) = val & 0xFF;
-	val >>= 8;
-	*(buf--) = val & 0xFF;
-
-	return;
-}
 
 void genkey2(const uint8_t *seed8, uint8_t *key) {
 	//this uses the kline_at algo... niskey2.c
@@ -68,7 +47,7 @@ void genkey2(const uint8_t *seed8, uint8_t *key) {
 		0x5A6F7CBB, 0x7A992254, 0x0ADFD5414, 0x343CFBCB,
 		0x0C2F51639, 0x6A6D5813, 0x3729FF68, 0x22A2C751};
 
-	seed = readinvb(seed8);
+	seed = reconst_32(seed8);
 
 	ecx = (seed & 1)<<6 | (seed>>9 & 1)<<4 | (seed>>1 & 1)<<3;
 	ecx |= (seed>>11 & 1)<<2 | (seed>>2 & 1)<<1 | (seed>>5 & 1);
@@ -93,48 +72,21 @@ void genkey2(const uint8_t *seed8, uint8_t *key) {
 	}
 	//here, the generated key is in "seed".
 
-	writeinvb(seed, key);
+	write_32b(seed, key);
 
 	return;
 }
 
+/** Encrypt with algo1.
+ * ( NPT_DDL2 algo (with key-in-ROM) ... niskey1.c )
+ * writes 4 bytes in buffer *key , bigE
+ *
+ * @param m scrambling code/key (hardcoded in ECU firmware)
+ * @param seed8 points to pseudorandom generated with SID 27 01, or data to encrypt
+ */
 void genkey1(const uint8_t *seed8, uint32_t m, uint8_t *key) {
-	//this uses the NPT_DDL2 algo (with key-in-ROM) ... niskey1.c
-	//writes 4 bytes in buffer *key
-
-	//m: scrambling code (hardcoded in ECU firmware)
-	//seed is pseudorandom generated with SID 27 01
-	uint32_t seed;
-	uint16_t mH,mL, sH, sL;
-	uint16_t kL, kH;	//temp words
-
-	uint16_t var2,var2b, var6;
-	uint32_t var3;
-
-	uint16_t var7,var8, var9;
-	uint32_t var10, var10b;
-
-	mL = m & 0xFFFF;
-	mH= m >> 16;
-	seed = readinvb(seed8);
-	sL = seed & 0xFFFF;
-	sH = seed >> 16;
-
-	var2 = (mH + sL);	// & 0xFFFF;
-	var3 = var2 << 2;
-	var6 = (var3 >>16);
-	var2b = var6 + var2 + var3 -1;
-
-	kL = var2b ^ sH;
-
-	var7 = (mL + kL) ;
-	var10 = var7 << 1;
-	var8 = (var10 >>16) + var7 + var10 -1;
-	var10b = var8 << 4;
-	var9 = var10b + (var10b >>16);
-	kH = sL ^ var9 ^ var8;
-
-	writeinvb((kH << 16) | kL, key);	//write key in buffer.
+	uint32_t seed = reconst_32(seed8);
+	write_32b(enc1(seed, m), key);	//write key in buffer.
 	return;
 }
 

@@ -24,6 +24,8 @@
 
 #include "nisprog.h"
 
+FILE *dbg_stream=NULL;	//for nislib
+
 
 #define NP_PROGNAME "nisprog"
 const struct cmd_tbl_entry np_cmdtable[];
