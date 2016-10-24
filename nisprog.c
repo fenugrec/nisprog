@@ -78,9 +78,7 @@ main(int argc, char **argv)
 	return 0;
 }
 
-int
-cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv))
-{
+int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
 	return CMD_OK;
 }
 
