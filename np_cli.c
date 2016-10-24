@@ -140,6 +140,14 @@ void genkey1(const uint8_t *seed8, uint32_t m, uint8_t *key) {
 
 //np 7 <scode>: same as np 6 but with the NPT_DDL algo.
 
+
+
+int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
+	return CMD_OK;
+}
+
+
+
 //np 1: try start diagsession, Nissan Repro style +
 // accesstimingparams (get limits + setvals)
 static int np_1(UNUSED(int argc), UNUSED(char **argv)) {

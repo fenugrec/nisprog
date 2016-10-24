@@ -81,12 +81,6 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
-	return CMD_OK;
-}
-
-
-
 const struct cmd_tbl_entry np_cmdtable[]=
 {
 		{ "dm", "dm <file> <start> <#_of_bytes>", "dump memory from ROM/RAM address space\n"
