@@ -25,6 +25,9 @@
 
 #include "scantool_cli.h"
 
+#include "nisprog.h"
+#include "np_backend.h"
+#include "flashdefs.h"
 #include "nissutils/cli_utils/nislib.h"
 
 #define CURFILE "np_cli.c"	//XXXXX TODO: fix VS automagic macro setting
@@ -95,6 +98,28 @@ int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
 }
 
 
+int cmd_npconn(int argc, char **argv) {
+	if (argc == 2) {
+		if (argv[1][0] == '?') {
+			return CMD_USAGE;
+		}
+	}
+	if (argc > 1) return CMD_USAGE;
+
+	if (npstate != NP_DISC) {
+		printf("Error : already connected\n");
+		return CMD_FAILED;
+	}
+
+	nisecu.ecutype = NISECU_UNK;
+	nisecu.ecuid[0] = 0x00;
+	nisecu.keyset = NULL;
+	nisecu.fblock_descr = NULL;
+
+	npstate = NP_NORMALCONN;
+
+	return CMD_OK;
+}
 
 //np 1: try start diagsession, Nissan Repro style +
 // accesstimingparams (get limits + setvals)
@@ -1455,7 +1480,6 @@ static int npk_raw_flashblock(uint8_t *src, uint32_t start, uint32_t len) {
 	return 0;
 }
 
-#include "flashdefs.h"
 /* reflash a given block !
  */
 static int np_12(int argc, char **argv) {
@@ -1647,23 +1671,7 @@ int cmd_npt(int argc, char **argv) {
 	switch (testnum) {
 	case 0:
 		//request ECUID
-		txdata[0]=0x1A;
-		txdata[1]=0x81;
-		nisreq.len=2;
-		rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-		if (rxmsg==NULL)
-			return CMD_FAILED;
-		if ((rxmsg->len < 7) || (rxmsg->data[0] != 0x5A)) {
-			printf("got bad 1A response : ");
-			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-			printf("\n");
-			diag_freemsg(rxmsg);
-			return CMD_FAILED;
-		}
-		memcpy(ECUID, rxmsg->data + 1, 6);	//skip 0x5A
-		ECUID[6]=0;	//null-terminate ecuid string !
-		printf("ECUID: %s\n", (char *) ECUID);
-		diag_freemsg(rxmsg);
+		printf("This test has been removed.\n");
 		break;
 	case 1:
 		return np_1(argc, argv);

@@ -97,14 +97,16 @@ badexit:
 
 const struct cmd_tbl_entry np_cmdtable[]=
 {
-		{ "dumpmem", "dumpmem <file> <start> <#_of_bytes>", "(shorthand: \"dm\") dump memory from ROM/RAM address space\n"
-								"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
-				cmd_dumpmem, 0, NULL},
-		{ "dm", "dm <file> <start> <#_of_bytes>", "dump memory from ROM/RAM address space\n"
-								"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
-				cmd_dumpmem, FLAG_HIDDEN, NULL},
-		{ "npt", "npt [testnum]", "temporary / testing commands. Refer to source code",
-				cmd_npt, 0, NULL},
-		{ NULL, NULL, NULL, NULL, 0, NULL}
+	{ "nc", "nc", "Connect to ECU with current parameters",
+			cmd_npconn, 0, NULL},
+	{ "dumpmem", "dumpmem <file> <start> <#_of_bytes>", "(shorthand: \"dm\") dump memory from ROM/RAM address space\n"
+							"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
+			cmd_dumpmem, 0, NULL},
+	{ "dm", "dm <file> <start> <#_of_bytes>", "dump memory from ROM/RAM address space\n"
+							"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
+			cmd_dumpmem, FLAG_HIDDEN, NULL},
+	{ "npt", "npt [testnum]", "temporary / testing commands. Refer to source code",
+			cmd_npt, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}
 };
 
