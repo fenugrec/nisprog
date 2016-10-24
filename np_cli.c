@@ -90,10 +90,6 @@ void genkey1(const uint8_t *seed8, uint32_t m, uint8_t *key) {
 	return;
 }
 
-//np 7 <scode>: same as np 6 but with the NPT_DDL algo.
-
-
-
 int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
 	return CMD_OK;
 }
@@ -167,7 +163,7 @@ static int np_2(int argc, char **argv) {
 	int errval;
 
 	if (argc != 3) {
-		printf("usage: np 2 <addr>: read 1 byte @ <addr>\n");
+		printf("usage: npt 2 <addr>: read 1 byte @ <addr>\n");
 		return CMD_USAGE;
 	}
 	if (sscanf(argv[2], "%x", &addr) != 1) {
@@ -697,7 +693,7 @@ int np_8(int argc, char **argv) {
 	uint8_t wbuf[4];
 
 	if (argc != 3) {
-		printf("usage: np 8 <addr>: watch 4 bytes @ <addr>\n");
+		printf("usage: npt 8 <addr>: watch 4 bytes @ <addr>\n");
 		return CMD_USAGE;
 	}
 	addr = (uint32_t) htoi(argv[2]);
@@ -950,7 +946,7 @@ int np_9(int argc, char **argv) {
 	uint8_t *pl_encr;	//encrypted payload buffer
 
 	if (argc != 5) {
-		printf("Transfer + run payload. Usage: np 9 <payload file> <sid27key> <sid36key>\n");
+		printf("Transfer + run payload. Usage: npt 9 <payload file> <sid27key> <sid36key>\n");
 		return CMD_USAGE;
 	}
 
@@ -1223,9 +1219,9 @@ static int np_10(int argc, char **argv) {
 	nisreq.data=txdata;
 
 	if (argc < 5) {
-		printf("npk-fastdump. Usage: np 10 <output file> <start> <len> [eep]\n"
-				"ex.: \"np 10 eeprom_dump.bin 0 512 eep\"\n"
-				"ex.: \"np 10 romdump_ivt.bin 0 0x400\"\n");
+		printf("npk-fastdump. Usage: npt 10 <output file> <start> <len> [eep]\n"
+				"ex.: \"npt 10 eeprom_dump.bin 0 512 eep\"\n"
+				"ex.: \"npt 10 romdump_ivt.bin 0 0x400\"\n");
 		return CMD_USAGE;
 	}
 
@@ -1496,9 +1492,9 @@ static int np_12(int argc, char **argv) {
 	nisreq.data=txdata;
 
 	if (argc <= 3) {
-		printf("npk-blockwrite. Usage: np 12 <data.bin> <blockno> [Y]\n"
+		printf("npk-blockwrite. Usage: npt 12 <data.bin> <blockno> [Y]\n"
 				"If 'Y' is absent, will run in \"practice\" mode (no erase / write).\n"
-				"ex.: \"np 12 blk_0xE0000-0xFFFFF.bin 15 Y\"\n");
+				"ex.: \"npt 12 blk_0xE0000-0xFFFFF.bin 15 Y\"\n");
 		return CMD_FAILED;
 	}
 
@@ -1706,7 +1702,7 @@ int cmd_npt(int argc, char **argv) {
 		{	//cheat : code block to allow local var decls
 		uint32_t nextaddr, maxaddr;
 		if (argc != 4) {
-			printf("Bad args. np 4 <start> <end>\n");
+			printf("Bad args. npt 4 <start> <end>\n");
 			return CMD_USAGE;
 		}
 
@@ -1723,7 +1719,7 @@ int cmd_npt(int argc, char **argv) {
 		break;	//cases 4,5 : dump with AC
 	case 7:
 		if (argc != 3) {
-			printf("SID27 test. usage: np 7 <scode>\n");
+			printf("SID27 test. usage: npt 7 <scode>\n");
 			return CMD_USAGE;
 		}
 		if ((sscanf(argv[2], "%x", &scode) != 1)) {
