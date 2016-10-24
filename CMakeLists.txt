@@ -60,15 +60,8 @@ check_type_size (uint16_t UINT16SIZE)
 check_type_size (uint32_t UINT32SIZE)
 
 
-
-
-list(APPEND freediag_cmake_args
-       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-       -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/external
-       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-)
-
+set(L0LIST "dumb" "dumbtest" "sim")
+set(L2LIST "iso9141" "iso14230" "raw")
 
 add_subdirectory(freediag external EXCLUDE_FROM_ALL)
 
