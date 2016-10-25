@@ -55,6 +55,9 @@ static struct nparam_t *nparams[] = {
 
 
 
+/** some static data for in here only */
+static struct keyset_t customkey;
+
 /** fwd decls **/
 static int npkern_init(void);
 static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep);
@@ -192,6 +195,46 @@ void autoselect_keyset(void) {
 
 	return;
 }
+
+
+/* setkeys <sid27key> [<sid36key1>] */
+int cmd_setkeys(int argc, char **argv) {
+	const struct keyset_t *pks;
+
+	if (argc == 2) {
+		if (argv[1][0] == '?') {
+			return CMD_USAGE;
+		}
+	}
+	if ((argc < 2) || (argc > 3)) return CMD_USAGE;
+
+	u32 s27k = (u32) htoi(argv[1]);
+	customkey.s27k = s27k;
+	if (argc == 3) {
+		// use specified keys : don't lookup in known_keys[]
+		customkey.s36k1 = (u32) htoi(argv[2]);
+		nisecu.keyset = &customkey;
+		goto goodexit;
+	}
+
+	unsigned i;
+	for (i=0; known_keys[i].s27k != 0; i++) {
+		if (s27k == known_keys[i].s27k) {
+			nisecu.keyset = (void *) &known_keys[i];
+			goto goodexit;
+		}
+	}
+
+	printf("Does not match a known keyset; you will need to provide both s27 and s36 keys\n");
+	return CMD_FAILED;
+
+goodexit:
+	pks = nisecu.keyset;
+	printf("Now using SID27 key=%08lX, SID36 key1=%08lX\n",
+				(unsigned long) pks->s27k, (unsigned long) pks->s36k1);
+	return CMD_OK;
+}
+
 
 
 int cmd_npconn(int argc, char **argv) {
