@@ -39,7 +39,7 @@
 
 /** fwd decls **/
 static int npkern_init(void);
-uint32_t read_ac(uint8_t *dest, uint32_t raddr, uint32_t len);
+static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len);
 
 
 int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
@@ -594,12 +594,12 @@ static int dumpmem(const char *froot, uint32_t start, uint32_t len, bool hackmod
 }
 
 /** Read bytes from memory
- * copies <len> bytes from <raddr> to dest,
+ * copies <len> bytes from offset <addr> in ROM to *dest,
  * using SID AC and std L2_request mechanism.
  * Uses global conn, assumes global state is OK
  * @return num of bytes read
  */
-uint32_t read_ac(uint8_t *dest, uint32_t raddr, uint32_t len) {
+static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 	uint8_t txdata[64];	//data for nisreq
 	struct diag_msg nisreq={0};	//request to send
 	struct diag_msg *rxmsg=NULL;	//pointer to the reply
@@ -611,8 +611,6 @@ uint32_t read_ac(uint8_t *dest, uint32_t raddr, uint32_t len) {
 	if (!dest || (len==0)) return 0;
 
 	unsigned int linecur;	//count from 0 to 11 (12 addresses per request)
-
-	addr = raddr;
 
 	int txi;	//index into txbuf for constructing request
 
