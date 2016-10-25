@@ -125,6 +125,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_npconn, 0, NULL},
 	{ "disc", "disc", "Disconnect from ECU (without resetting the ECU if running a kernel)",
 			cmd_npdisc, 0, NULL},
+	{ "watch", "watch <addr>", "Watch 4 bytes @ <addr>",
+			cmd_watch, 0, NULL},
 	{ "dumpmem", "dumpmem <file> <start> <#_of_bytes>", "(shorthand: \"dm\") dump memory from ROM/RAM address space\n"
 							"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
 			cmd_dumpmem, 0, NULL},

@@ -805,18 +805,23 @@ uint32_t read_ac(uint8_t *dest, uint32_t raddr, uint32_t len) {
 	return goodbytes;
 }
 
-//np 8 : (WIP) watch 4 bytes @ specified addr, using SID AC.
-//"np 8 <addr>"
-int np_8(int argc, char **argv) {
+//(WIP) watch 4 bytes @ specified addr, using SID AC.
+//
+int cmd_watch(int argc, char **argv) {
 	uint32_t addr;
 	uint32_t len;
 	uint8_t wbuf[4];
 
-	if (argc != 3) {
-		printf("usage: npt 8 <addr>: watch 4 bytes @ <addr>\n");
+	if (argc != 2) {
 		return CMD_USAGE;
 	}
-	addr = (uint32_t) htoi(argv[2]);
+
+	if (npstate != NP_NORMALCONN) {
+		printf("mem watch needs an active normal connection\n");
+		return CMD_FAILED;
+	}
+
+	addr = (uint32_t) htoi(argv[1]);
 	printf("\nMonitoring 0x%0X; press Enter to interrupt.\n", addr);
 	(void) diag_os_ipending();	//must be done outside the loop first
 	while ( !diag_os_ipending()) {
@@ -1584,18 +1589,19 @@ int cmd_npt(int argc, char **argv) {
 	}
 
 	switch (testnum) {
-	case 0:
-		//request ECUID
-		printf("This test has been removed.\n");
-		break;
+
 	case 1:
 		return np_1(argc, argv);
 		break;
 	case 2:
 		return np_2(argc, argv);
 		break;
+	case 0:
+		//request ECUID
 	case 3:
 		//SID A4: dump the first 256-byte page,
+	case 8:
+		//watch 4 bytes
 		printf("This test has been removed.\n");
 		break;
 	case 5:
@@ -1637,9 +1643,6 @@ int cmd_npt(int argc, char **argv) {
 	case 6:
 		return np_6_7(argc, argv, 2, 0);
 		break;	//case 6,7 (sid27)
-	case 8:
-		return np_8(argc, argv);
-		break;
 	case 9:
 		return np_9(argc, argv);
 		break;
