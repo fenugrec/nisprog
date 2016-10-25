@@ -578,69 +578,74 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 
 			rqok=0;	//default to fail
 			//send the request "properly"
-			if (diag_l2_send(global_l2_conn, &nisreq)==0) {
-				//and get a response; we already know the max expected length:
-				//61 81 [2+linecur] + max 4 (header+cks) = 8+linecur
-				//but depending on the previous message there may be extra
-				//bytes still in buffer; we already calculated how many.
-				//By requesting (extra) + 4 with a short timeout, we'll return
-				//here very quickly and we're certain to "catch" 0x61.
+			if (diag_l2_send(global_l2_conn, &nisreq)) {
+				printf("l2_send() problem !\n");
+				retryscore -=25;
+				diag_os_millisleep(300);
+				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+				break;	//out of for ()
+			}
+
+			//and get a response; we already know the max expected length:
+			//61 81 [2+linecur] + max 4 (header+cks) = 8+linecur
+			//but depending on the previous message there may be extra
+			//bytes still in buffer; we already calculated how many.
+			//By requesting (extra) + 4 with a short timeout, we'll return
+			//here very quickly and we're certain to "catch" 0x61.
+			errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
+					NULL, hackbuf, extra + 4, 25 + nparam_rxe.val);
+			if (errval != extra+4) {
+				retryscore -=25;
+				diag_os_millisleep(300);
+				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+				break;	//out of for ()
+			}
+			//try to find 0x61 in the first bytes:
+			for (i=0; i<errval; i++) {
+					if (hackbuf[i] == 0x61) {
+						rqok=1;
+						break;
+					}
+			}
+			//we now know where the real data starts so we can request the
+			//exact number of bytes remaining. Now, (errval - i) is the number
+			//of packet bytes already read including 0x61, ex.:
+			//[XX XX 61 81 YY YY ..] : i=2 and errval =5 means we have (5-2)=3 bytes
+			// of packet data (61 81 YY)
+			// Total we need (2 + linecur) packet bytes + 1 cksum
+			// So we need to read (2+linecur+1) - (errval-i) bytes...
+			// Plus : we need to dump those at the end of what we already got !
+			extra = (3 + linecur) - (errval - i);
+			if (extra<0) {
+				printf("\nhack mode : problem ! extra=%d\n",extra);
+				extra=0;
+			} else {
 				errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-						NULL, hackbuf, extra + 4, 25 + nparam_rxe.val);
-				if (errval != extra+4) {
-					retryscore -=25;
-					diag_os_millisleep(300);
-					(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-					break;	//out of for ()
-				}
-				//try to find 0x61 in the first bytes:
-				for (i=0; i<errval; i++) {
-						if (hackbuf[i] == 0x61) {
-							rqok=1;
-							break;
-						}
-				}
-				//we now know where the real data starts so we can request the
-				//exact number of bytes remaining. Now, (errval - i) is the number
-				//of packet bytes already read including 0x61, ex.:
-				//[XX XX 61 81 YY YY ..] : i=2 and errval =5 means we have (5-2)=3 bytes
-				// of packet data (61 81 YY)
-				// Total we need (2 + linecur) packet bytes + 1 cksum
-				// So we need to read (2+linecur+1) - (errval-i) bytes...
-				// Plus : we need to dump those at the end of what we already got !
-				extra = (3 + linecur) - (errval - i);
-				if (extra<0) {
-					printf("\nhack mode : problem ! extra=%d\n",extra);
-					extra=0;
-				} else {
-					errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-						NULL, &hackbuf[errval], extra, 25 + nparam_rxe.val);
-				}
+					NULL, &hackbuf[errval], extra, 25 + nparam_rxe.val);
+			}
 
-				if (errval != extra)	//this should always fit...
-					rqok=0;
+			if (errval != extra)	//this should always fit...
+				rqok=0;
 
-				if (!rqok) {
-					//either negative response or not enough data !
-					printf("\nhack mode : bad 61 response %02X %02X, i=%02X extra=%02X ev=%02X\n",
-							hackbuf[i], hackbuf[i+1], i, extra, errval);
-					diag_os_millisleep(300);
-					(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-					retryscore -= 25;
-					break;	//out of for ()
-				}
-				//and verify checksum. [i] points to 0x61;
-				if (hackbuf[i+2+linecur] != diag_cks1(&hackbuf[i-1], 3+linecur)) {
-					//this checksum will not work with long headers...
-					printf("\nhack mode : bad 61 CS ! got %02X\n", hackbuf[i+2+linecur]);
-					diag_data_dump(stdout, &hackbuf[i], linecur+3);
-					diag_os_millisleep(300);
-					(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-					retryscore -=20;
-					break;	//out of for ()
-				}
-
-			}	//if l2_send OK
+			if (!rqok) {
+				//either negative response or not enough data !
+				printf("\nhack mode : bad 61 response %02X %02X, i=%02X extra=%02X ev=%02X\n",
+						hackbuf[i], hackbuf[i+1], i, extra, errval);
+				diag_os_millisleep(300);
+				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+				retryscore -= 25;
+				break;	//out of for ()
+			}
+			//and verify checksum. [i] points to 0x61;
+			if (hackbuf[i+2+linecur] != diag_cks1(&hackbuf[i-1], 3+linecur)) {
+				//this checksum will not work with long headers...
+				printf("\nhack mode : bad 61 CS ! got %02X\n", hackbuf[i+2+linecur]);
+				diag_data_dump(stdout, &hackbuf[i], linecur+3);
+				diag_os_millisleep(300);
+				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+				retryscore -=20;
+				break;	//out of for ()
+			}
 
 				//We can now dump this to the file...
 			if (fwrite(&(hackbuf[i+2]), 1, linecur, outf) != linecur) {
@@ -674,7 +679,6 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 	fclose(outf);
 
 	if (retryscore <= 0) {
-			//there was an error inside and no retries left
 		printf("Too many errors, no more retries @ addr=%08X.\n", start);
 		return CMD_FAILED;
 	}
