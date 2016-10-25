@@ -255,25 +255,22 @@ int sid36(uint8_t *buf, uint32_t len) {
 			return -1;
 		}
 
-		/* this will always time out since the response is probably always 5 bytes */
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, sizeof(rxbuf), 25);
-		if (errval <= 3) {
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 50);
+		if (errval < 3) {
 			printf("no response @ blockno %X\n", (unsigned) blockno);
 			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 			return -1;
 		}
 
 		if (rxbuf[0] & 0x80) {
-			//with address : response looks like "<len | 0x80> <src> <dest> <resp>"
-			rxbuf[0] = rxbuf[3];
-		} else {
-			//no address : "<len> <resp> <cks>"
-			rxbuf[0] = rxbuf[1];
+			printf("Problem: ECU responding with long headers ?\n");
+			return -1;
 		}
-		if (rxbuf[0] != 0x76) {
+		if (rxbuf[1] != 0x76) {
 			printf("got bad 36 response : ");
 			diag_data_dump(stdout, rxbuf, errval);
 			printf("\n");
+			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 			return -1;
 		}
 		printf("\rSID36 block 0x%04X/0x%04X done",
