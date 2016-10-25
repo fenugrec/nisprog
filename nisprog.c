@@ -142,6 +142,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_dumpmem, 0, NULL},
 	{ "dm", "dm <file> <start> <#_of_bytes> [eep]", "dump memory from ROM/RAM/EEPROM",
 			cmd_dumpmem, FLAG_HIDDEN, NULL},
+	{ "tfl", "tfl <file>", "[test] compare CRC of ROM to file",
+			cmt_tfl, 0, NULL},
 	{ "npt", "npt [testnum]", "temporary / testing commands. Refer to source code",
 			cmd_npt, 0, NULL},
 	{ NULL, NULL, NULL, NULL, 0, NULL}

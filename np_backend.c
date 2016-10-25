@@ -357,3 +357,146 @@ int sidBF(void) {
 	diag_freemsg(rxmsg);
 	return 0;
 }
+
+
+
+
+
+
+/*** CRC16 implementation adapted from Lammert Bies
+ * https://www.lammertbies.nl/comm/info/crc-calculation.html
+ *
+ *
+ */
+#define NPK_CRC16	0xBAAD	//koopman, 2048bits (256B)
+static bool crc_tab16_init = 0;
+static u16 crc_tab16[256];
+
+static void init_crc16_tab( void ) {
+	u32 i, j;
+	u16 crc, c;
+
+	for (i=0; i<256; i++) {
+		crc = 0;
+		c   = (u16) i;
+
+		for (j=0; j<8; j++) {
+			if ( (crc ^ c) & 0x0001 ) crc = ( crc >> 1 ) ^ NPK_CRC16;
+			else                      crc =   crc >> 1;
+			c = c >> 1;
+		}
+		crc_tab16[i] = crc;
+	}
+
+	crc_tab16_init = 1;
+
+}  /* init_crc16_tab */
+
+
+static u16 crc16(const u8 *data, u32 siz) {
+	u16 crc;
+
+	if ( ! crc_tab16_init ) init_crc16_tab();
+
+	crc = 0;
+
+	while (siz > 0) {
+		u16 tmp;
+		u8 nextval;
+
+		nextval = *data++;
+		tmp =  crc       ^ nextval;
+		crc = (crc >> 8) ^ crc_tab16[ tmp & 0xff ];
+		siz -= 1;
+	}
+	return crc;
+}
+
+/** compare CRC of source data at *src to ROM
+ * the area starting at src[0] is compared to the area of ROM
+ * starting at <start>, for a total of <len> bytes (rounded up)
+ *
+ * Caller must have validated parameters
+ *
+ * @param goodcrc: result of crc check is written to that variable
+ * @return 0 if comparison completed correctly
+ */
+#define NPK_CRC_CHUNKSIZE 256
+int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *goodcrc) {
+	uint8_t txdata[6];	//data for nisreq
+	struct diag_msg nisreq={0};	//request to send
+	uint8_t rxbuf[10];
+	int errval;
+	uint16_t chunko;
+	//uint16_t maxchunks;
+
+	len = (len + 1) & ~(NPK_CRC_CHUNKSIZE - 1);
+
+	chunko = start / NPK_CRC_CHUNKSIZE;
+	//maxchunks = (len / NPK_CRC_CHUNKSIZE) - 1;
+
+		//request format : <SID_CONF> <SID_CONF_CKS1> <CRCH> <CRCL> <CNH> <CNL>
+		//verify if <CRCH:CRCL> hash is valid for a 256B chunk of the ROM (starting at <CNH:CNL> * 256)
+#define SID_CONF 0xBE
+	txdata[0]=SID_CONF;
+	txdata[1]=0x03;
+		//txdata[2] and [3] is the CRC,
+		//txdata[4] and [5] is the chunk #
+
+	nisreq.data=txdata;
+	nisreq.len= 6;
+
+	for (; len > 0; len -= NPK_CRC_CHUNKSIZE, chunko += 1) {
+
+		u16 chunk_crc = crc16(src, NPK_CRC_CHUNKSIZE);
+		src += NPK_CRC_CHUNKSIZE;
+		txdata[2] = chunk_crc >> 8;
+		txdata[3] = chunk_crc & 0xFF;
+		txdata[4] = chunko >> 8;
+		txdata[5] = chunko & 0xFF;
+
+		//rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
+		errval = diag_l2_send(global_l2_conn, &nisreq);
+		if (errval) {
+			printf("\nl2_send error!\n");
+			return -1;
+		}
+
+		//responses :	01 FC FD for good CRC
+		//				03 7F FC 77 <cks> for bad CRC
+		// anything else is an error that causes abort
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 50);
+		if (errval != 3) {
+			printf("\nno response @ chunk %X\n", (unsigned) chunko);
+			goto badexit;
+		}
+
+		if (rxbuf[1] == SID_CONF + 0x40) {
+			continue;
+		}
+		//so, it's a 03 7F FC xx <cks> response. Get remainder of packet
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf+3, 2, 50);
+		if (errval != 2) {
+			printf("\nweirdness @ chunk %X\n", (unsigned) chunko);
+			goto badexit;
+		}
+
+		if ((rxbuf[2] != SID_CONF) || (rxbuf[3] != 0x77)) {
+			printf("\ngot bad SID_FLASH_CKS1 response : ");
+			goto badexit;
+		}
+		//confirmed bad CRC, we can exit
+		*goodcrc = 0;
+		return 0;
+	}	//for
+
+	*goodcrc = 1;
+	return 0;
+
+badexit:
+	diag_data_dump(stdout, rxbuf, sizeof(rxbuf));
+	printf("\n");
+	(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+	return -1;
+}
+

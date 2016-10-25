@@ -1722,3 +1722,56 @@ int cmd_npt(int argc, char **argv) {
 
 	return CMD_OK;
 }
+
+
+/* tfl <file> */
+int cmt_tfl(int argc, char **argv) {
+	FILE *fpl;
+	uint8_t *newdata;	//file will be copied to this
+
+	u32 total_len;
+
+	if (argc != 2) {
+		return CMD_USAGE;
+	}
+
+	if ((fpl = fopen(argv[1], "rb"))==NULL) {
+		printf("Cannot open %s !\n", argv[1]);
+		return CMD_FAILED;
+	}
+
+	total_len = flen(fpl);
+	if (total_len != 1024*1024UL) {
+		printf("error : data file doesn't match expected length\n");
+		goto badexit_nofree;
+	}
+	if (diag_malloc(&newdata, total_len)) {
+		printf("malloc prob\n");
+		goto badexit_nofree;
+	}
+
+	if (fread(newdata, 1, total_len, fpl) != total_len) {
+		printf("fread prob !?\n");
+		goto badexit;
+	}
+
+	unsigned blockno;
+
+	for (blockno = 0; blockno < ARRAY_SIZE(fblocks_7058); blockno ++) {
+		uint32_t start, len;
+		bool gc = 0;
+		start = fblocks_7058[blockno].start;
+		len = fblocks_7058[blockno].len;
+		(void) check_romcrc(&newdata[start], start, len, &gc);
+		printf("\nchecked flblock %u: crc=%d", blockno, gc);
+	}
+	printf("\n");
+	return CMD_OK;
+
+badexit:
+	free(newdata);
+badexit_nofree:
+	fclose(fpl);
+	return CMD_FAILED;
+
+}

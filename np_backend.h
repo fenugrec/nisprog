@@ -1,6 +1,7 @@
 #ifndef _NP_BACKEND_H
 #define _NP_BACKEND_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /* *******
@@ -67,4 +68,6 @@ int sid37(uint16_t cks);
  */
 int sidBF(void);
 
+/* temp : */
+int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *goodcrc);
 #endif
