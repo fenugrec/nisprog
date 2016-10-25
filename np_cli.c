@@ -8,6 +8,7 @@
  */
 
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -29,6 +30,7 @@
 #include "np_backend.h"
 #include "flashdefs.h"
 #include "nissutils/cli_utils/nislib.h"
+#include "nissutils/cli_utils/ecuid_list.h"
 
 #define CURFILE "np_cli.c"	//XXXXX TODO: fix VS automagic macro setting
 
@@ -97,6 +99,34 @@ int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
 	return CMD_OK;
 }
 
+#define KEY_CANDIDATES 3
+void select_keyset(void) {
+	unsigned i;
+	u32 s27k;
+	struct ecuid_keymatch_t kcs[KEY_CANDIDATES];
+
+	ecuid_getkeys((const char *) nisecu.ecuid, kcs, KEY_CANDIDATES);
+
+	printf("Key candidate\tdist (smaller is better)\n");
+	for (i = 0; i < KEY_CANDIDATES; i++) {
+		printf("%d: 0x%08lX\t%d\n",i, (unsigned long) kcs[i].key, kcs[i].dist);
+	}
+	printf("\n");
+	// TODO : allow user selection
+
+	s27k = kcs[0].key;
+
+	for (i=0; known_keys[i].s27k != 0; i++) {
+		if (s27k == known_keys[i].s27k) {
+			nisecu.keyset = (void *) &known_keys[i];
+			break;
+		}
+	}
+	assert(known_keys[i].s27k != 0);
+
+	return;
+}
+
 
 int cmd_npconn(int argc, char **argv) {
 	if (argc == 2) {
@@ -163,6 +193,7 @@ int cmd_npconn(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 	printf("ECUID: %s\n", (char *) nisecu.ecuid);
+	select_keyset();
 
 	return CMD_OK;
 }

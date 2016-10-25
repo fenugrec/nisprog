@@ -71,7 +71,8 @@ add_subdirectory(freediag external EXCLUDE_FROM_ALL)
 #set (NISPROG_SRCS nisprog.c freediag/scantool/scantool_cli.c)
 set (NISPROG_SRCS nisprog.c np_cli.c np_backend.c
 			scantool_bits.c
-			nissutils/cli_utils/nislib.c )
+			nissutils/cli_utils/nislib.c nissutils/cli_utils/ecuid_list.c
+	)
 
 add_executable(nisprog ${NISPROG_SRCS})
 
