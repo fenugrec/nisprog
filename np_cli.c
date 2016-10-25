@@ -34,7 +34,6 @@
 
 #define CURFILE "np_cli.c"	//XXXXX TODO: fix VS automagic macro setting
 
-#define NP_RX_EXTRATIMEOUT 20	//ms, added to all timeouts. Adjust to eliminiate read timeout errors
 #define NPK_SPEED 62500	//bps default speed for npkern kernel
 
 
@@ -47,7 +46,7 @@ struct nparam_t {
 
 
 static struct nparam_t nparam_p3 = {.val = 5, .shortname = "p3", .descr = "P3 time before new request (ms)"};
-static struct nparam_t nparam_rxe = {.val = NP_RX_EXTRATIMEOUT, .shortname = "rxe", .descr = "Extra timeout on receive calls"};
+static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Read timeout offset. Adjust to eliminiate timeout errors"};
 static struct nparam_t *nparams[] = {
 	&nparam_p3,
 	&nparam_rxe,
@@ -80,11 +79,11 @@ int cmd_npconf(int argc, char **argv) {
 	bool found = 0;
 	bool helping = 0;
 
-	if (argc != 3) return CMD_USAGE;
-
 	if (argv[1][0] == '?') {
 		helping = 1;
-		printf("param\tcurrent_value\tdescription:\n");
+		printf("param\tvalue\tdescription\n");
+	} else if (argc != 3) {
+		return CMD_USAGE;
 	}
 
 	// find param name in list
@@ -92,7 +91,7 @@ int cmd_npconf(int argc, char **argv) {
 	for (i = 0; nparams[i]; i++) {
 		npt = nparams[i];
 		if (helping) {
-			printf("%s\t%d\t%s", npt->shortname, npt->val, npt->descr);
+			printf("%s\t%d\t%s\n", npt->shortname, npt->val, npt->descr);
 			continue;
 		}
 		if (strcmp(npt->shortname, argv[1]) == 0) {
@@ -525,7 +524,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			// We should find 0xEC if it's in there no matter what kind of header.
 			// We'll "purge" the next bytes when we send SID 21
 			errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-					NULL, hackbuf, 4, 25 + NP_RX_EXTRATIMEOUT);
+					NULL, hackbuf, 4, 25 + nparam_rxe.val);
 			if (errval == 4) {
 				//try to find 0xEC in the first bytes:
 				for (i=0; i<=3 && i<errval; i++) {
@@ -568,7 +567,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 				//By requesting (extra) + 4 with a short timeout, we'll return
 				//here very quickly and we're certain to "catch" 0x61.
 				errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-						NULL, hackbuf, extra + 4, 25 + NP_RX_EXTRATIMEOUT);
+						NULL, hackbuf, extra + 4, 25 + nparam_rxe.val);
 				if (errval != extra+4) {
 					retryscore -=25;
 					diag_os_millisleep(300);
@@ -596,7 +595,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 					extra=0;
 				} else {
 					errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-						NULL, &hackbuf[errval], extra, 25 + NP_RX_EXTRATIMEOUT);
+						NULL, &hackbuf[errval], extra, 25 + nparam_rxe.val);
 				}
 
 				if (errval != extra)	//this should always fit...
@@ -1118,7 +1117,7 @@ static int npk_rxrawdump(uint8_t *dest, uint32_t skip_start, uint32_t numblocks)
 		//loop for every 32-byte response
 
 		/* grab header. Assumes we only get "FMT PRC <data> cks" replies */
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3 + 32, 25 + NP_RX_EXTRATIMEOUT);
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3 + 32, 25 + nparam_rxe.val);
 		if (errval < 0) {
 			printf("dl1recv err\n");
 			goto badexit;
