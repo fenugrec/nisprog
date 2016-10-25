@@ -292,6 +292,33 @@ int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
 	return CMD_OK;
 }
 
+int cmd_stopkernel(int argc, UNUSED(char **argv)) {
+	uint8_t txdata[1];
+	struct diag_msg nisreq={0};	//request to send
+	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	int errval;
+
+	if (npstate != NP_NPKCONN) {
+		return CMD_OK;
+	}
+
+	if (argc != 1) return CMD_USAGE;
+
+	printf("Resetting ECU and closing connection. You may need to change speed before reconnecting.\n");
+
+	txdata[0]=0x11;
+	nisreq.len=1;
+	nisreq.data=txdata;
+
+	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
+	if (rxmsg==NULL) return CMD_FAILED;
+
+	(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+	(void) cmd_npdisc(0, NULL);
+
+	return CMD_OK;
+}
+
 
 //np 1: try start diagsession, Nissan Repro style +
 // accesstimingparams (get limits + setvals)
@@ -1284,25 +1311,6 @@ badexit:
 }
 
 
-/* npkernel : reset ECU */
-static int np_11(UNUSED(int argc), UNUSED(char **argv)) {
-	uint8_t txdata[1];
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	int errval;
-
-	txdata[0]=0x11;
-	nisreq.len=1;
-	nisreq.data=txdata;
-
-	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL) return CMD_FAILED;
-
-	(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-	return CMD_OK;
-}
-
-
 /* special checksum for reflash blocks:
  * "one's complement" checksum; if adding causes a carry, add 1 to sum. Slightly better than simple 8bit sum
  */
@@ -1615,6 +1623,8 @@ int cmd_npt(int argc, char **argv) {
 		//send + run payload
 	case 10:
 		//npk fast dump
+	case 11:
+		//npk reset
 		printf("This test has been removed.\n");
 		break;
 	case 5:
@@ -1656,9 +1666,6 @@ int cmd_npt(int argc, char **argv) {
 	case 6:
 		return sid27_unlock(2, 0);
 		break;	//case 6,7 (sid27)
-	case 11:
-		return np_11(argc, argv);
-		break;
 	case 12:
 		return np_12(argc, argv);
 		break;

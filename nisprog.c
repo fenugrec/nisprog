@@ -129,6 +129,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_npconf, 0, NULL},
 	{ "runkernel", "runkernel <file>", "Send + run specified kernel",
 			cmd_runkernel, 0, NULL},
+	{ "stopkernel", "stopkernel", "Resets the ECU to exit kernel",
+			cmd_stopkernel, 0, NULL},
 	{ "watch", "watch <addr>", "Watch 4 bytes @ <addr>",
 			cmd_watch, 0, NULL},
 	{ "dumpmem", "dumpmem <file> <start> <#_of_bytes> [eep]", "(shorthand: \"dm\") dump memory from ROM/RAM address space, or EEPROM if\n"
