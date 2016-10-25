@@ -688,8 +688,6 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
  * @return CMD_OK or CMD_FAILED
  */
 static int dumpmem(const char *froot, uint32_t start, uint32_t len, bool hackmode) {
-	// try with P3min = 5ms rather than 55ms; this should
-	// save ~8ms per byte overall.
 #define DUMPFILESZ 30
 	FILE *romdump;
 	char romfile[DUMPFILESZ+1]="";
@@ -700,8 +698,6 @@ static int dumpmem(const char *froot, uint32_t start, uint32_t len, bool hackmod
 
 	nextaddr = start;
 	maxaddr = start + len - 1;
-
-	global_l2_conn->diag_l2_p3min=5;	//5ms before new requests
 
 	snprintf(romfile, DUMPFILESZ, "%s_%X-%X.bin", froot, start, start+len - 1);
 
@@ -906,7 +902,6 @@ int np_9(int argc, char **argv) {
 	uint32_t sid36key;
 	uint32_t file_len;
 	uint32_t pl_len;
-	uint16_t old_p3;
 
 	FILE *fpl;
 	uint8_t *pl_encr;	//encrypted payload buffer
@@ -946,9 +941,6 @@ int np_9(int argc, char **argv) {
 		printf("Using %u (0x0%X) byte payload", file_len, file_len);
 	}
 
-	old_p3 = global_l2_conn->diag_l2_p3min;
-	global_l2_conn->diag_l2_p3min = 5;	//0 delay before new req
-
 	/* re-use NP 7 to get the SID27 done */
 	if (sid27_unlock(1, sid27key)) {
 		printf("sid27 problem\n");
@@ -985,7 +977,6 @@ int np_9(int argc, char **argv) {
 		goto badexit;
 	}
 
-	global_l2_conn->diag_l2_p3min = old_p3;
 	free(pl_encr);
 	fclose(fpl);
 
@@ -1000,7 +991,6 @@ int np_9(int argc, char **argv) {
 	return CMD_OK;
 
 badexit:
-	global_l2_conn->diag_l2_p3min = old_p3;
 	free(pl_encr);
 	fclose(fpl);
 	return CMD_FAILED;
@@ -1036,7 +1026,6 @@ static int npkern_init(void) {
 	}
 	(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 
-	global_l2_conn->diag_l2_p3min = 5;	//5ms before sending new requests
 	dlproto = (struct diag_l2_14230 *)global_l2_conn->diag_l2_proto_data;
 	dlproto->modeflags = ISO14230_SHORTHDR | ISO14230_LENBYTE | ISO14230_FMTLEN;
 
@@ -1169,7 +1158,6 @@ badexit:
  * return 0 if ok
  */
 static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
-	uint16_t old_p3;
 
 	uint8_t txdata[64];	//data for nisreq
 	struct diag_msg nisreq={0};	//request to send
@@ -1185,9 +1173,6 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 		printf("bad args\n");
 		return -1;
 	}
-
-	old_p3 = global_l2_conn->diag_l2_p3min;
-	global_l2_conn->diag_l2_p3min = 0;	//0 delay before sending new request
 
 	if (npkern_init()) {
 		printf("npk init failed\n");
@@ -1274,13 +1259,11 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 	printf("\n");
 
 	fclose(fpl);
-	global_l2_conn->diag_l2_p3min = old_p3;
 	return 0;
 
 badexit:
 	(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 	fclose(fpl);
-	global_l2_conn->diag_l2_p3min = old_p3;
 	return -1;
 }
 
