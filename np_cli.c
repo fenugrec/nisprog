@@ -465,7 +465,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 	uint8_t hackbuf[70];
 	int extra;	//extra bytes to purge
 	uint32_t addr, nextaddr, maxaddr;
-	unsigned long chrono;
+	unsigned long total_chron;
 
 	nextaddr = start;
 	maxaddr = start + len - 1;
@@ -473,7 +473,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 	if (!outf) return CMD_FAILED;
 
 	nisreq.data=txdata;	//super very essential !
-	chrono = diag_os_getms();
+	total_chron = diag_os_getms();
 	while (retryscore >0) {
 
 		unsigned int linecur=0;	//count from 0 to 11 (12 addresses per request)
@@ -489,6 +489,10 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 		txi=2;
 		linecur = 0;
 
+		unsigned long t0, chrono;
+		unsigned chron_cnt = 0;	//how many bytes between refreshes
+		t0 = diag_os_getms();
+
 		for (addr=nextaddr; addr <= maxaddr; addr++) {
 			txdata[txi++]= 0x83;		//field type
 			txdata[txi++]= (uint8_t) (addr >> 24) & 0xFF;
@@ -502,7 +506,22 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			if ((linecur != 0x0c) && (addr != maxaddr))
 				continue;
 
-			printf("\n%08X: ", nextaddr);
+			unsigned curspeed, tmin, tsec;
+			chron_cnt += linecur;
+			chrono = diag_os_getms() - t0;
+			if (chrono > 200) {
+				//limit update rate
+				curspeed = 1000 * (chron_cnt) / chrono;	//avg B/s
+				if (!curspeed) curspeed += 1;
+				tsec = ((maxaddr - addr) / curspeed) % 9999;
+				tmin = tsec / 60;
+				tsec = tsec % 60;
+
+				printf("\rreading @ 0x%08X (%3u %%, %5u B/s, ~ %3u:%02u remaining ", nextaddr,
+								(unsigned) 100 * (maxaddr - addr) / len, curspeed, tmin, tsec);
+				chron_cnt = 0;
+				t0 = diag_os_getms();
+			}
 
 			int i, rqok;
 			//send the request "properly"
@@ -629,7 +648,6 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 				retryscore -= 101;	//fatal, sir
 				break;	//out of for ()
 			}
-			diag_data_dump(stdout, &hackbuf[i+2], linecur);
 
 			nextaddr += linecur;	//if we crash, we can resume starting at nextaddr
 			linecur=0;
@@ -648,7 +666,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			//(if succesful, addr == maxaddr+1 !!)
 			printf("\nRetry score: %d\n", retryscore);
 		} else {
-			printf("\nFinished! ~%lu Bps\n", 1000*(maxaddr - start)/(diag_os_getms() - chrono));
+			printf("\nFinished! ~%lu Bps\n", 1000*(maxaddr - start)/(diag_os_getms() - total_chron));
 			break;	//leave while()
 		}
 	}	//while retryscore>0
