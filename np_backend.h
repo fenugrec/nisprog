@@ -8,12 +8,34 @@
  */
 
 
+/** Encrypt with algo1.
+ * ( NPT_DDL2 algo (with key-in-ROM) ... niskey1.c )
+ * writes 4 bytes in buffer *key , bigE
+ *
+ * @param m scrambling code/key (hardcoded in ECU firmware)
+ * @param seed8 points to pseudorandom generated with SID 27 01, or data to encrypt
+ */
+void genkey1(const uint8_t *seed8, uint32_t m, uint8_t *key);
+
+
 /** SID 1A GetECUID
  * writes 5 chars + 0x00 to *dest
  *
  * Ret 0 if ok
  */
 int get_ecuid(uint8_t *dest);
+
+
+/** Attempt a SecurityAccess (SID 27), using selected algo.
+ * @param keyalg : which algorithm to use
+
+ * keyalg = 1 for "algo 1" (genkey1 (NPT_DDL2) + scode: widespread)
+ * keyalg = 2 for alternate (genkey2, KLINE_AT)
+ *
+ * @return 0 if successful
+ */
+int sid27_unlock(int keyalg, uint32_t scode);
+
 
 
 /** do SID 34 80 transaction (RequestDownload)

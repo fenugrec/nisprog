@@ -41,59 +41,6 @@
 static int npkern_init(void);
 uint32_t read_ac(uint8_t *dest, uint32_t raddr, uint32_t len);
 
-void genkey2(const uint8_t *seed8, uint8_t *key) {
-	//this uses the kline_at algo... niskey2.c
-	//writes 4 bytes in buffer *key
-	uint32_t seed, ecx, xorloops;
-	int ki;
-
-	const uint32_t keytable[]={0x14FA3579, 0x27CD3964, 0x1777FE32, 0x9931AF12,
-		0x75DB3A49, 0x19294CAA, 0x0FF18CD76, 0x788236D,
-		0x5A6F7CBB, 0x7A992254, 0x0ADFD5414, 0x343CFBCB,
-		0x0C2F51639, 0x6A6D5813, 0x3729FF68, 0x22A2C751};
-
-	seed = reconst_32(seed8);
-
-	ecx = (seed & 1)<<6 | (seed>>9 & 1)<<4 | (seed>>1 & 1)<<3;
-	ecx |= (seed>>11 & 1)<<2 | (seed>>2 & 1)<<1 | (seed>>5 & 1);
-	ecx += 0x1F;
-
-	if (ecx <= 0) {
-		printf("problem !!\n");
-		return;
-	}
-
-	ki = (seed & 1)<<3 | (seed>>1 & 1)<<2 | (seed>>2 & 1)<<1 | (seed>>9 & 1);
-
-	//printf("starting xorloop with ecx=0x%0X, ki=0x%0X\n", ecx, ki);
-
-	for (xorloops=0; xorloops < ecx; xorloops++) {
-		if (seed & 0x80000000) {
-			seed += seed;
-			seed ^= keytable[ki];
-		} else {
-			seed += seed;
-		}
-	}
-	//here, the generated key is in "seed".
-
-	write_32b(seed, key);
-
-	return;
-}
-
-/** Encrypt with algo1.
- * ( NPT_DDL2 algo (with key-in-ROM) ... niskey1.c )
- * writes 4 bytes in buffer *key , bigE
- *
- * @param m scrambling code/key (hardcoded in ECU firmware)
- * @param seed8 points to pseudorandom generated with SID 27 01, or data to encrypt
- */
-void genkey1(const uint8_t *seed8, uint32_t m, uint8_t *key) {
-	uint32_t seed = reconst_32(seed8);
-	write_32b(enc1(seed, m), key);	//write key in buffer.
-	return;
-}
 
 int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
 	return CMD_OK;
@@ -583,67 +530,6 @@ static int np_5(FILE *outf, const uint32_t start, uint32_t len) {
 	return CMD_OK;
 }
 
-static int np_6_7(UNUSED(int argc), UNUSED(char **argv), int keyalg, uint32_t scode) {
-	//np 6 & 7 : attempt a SecurityAccess (SID 27), using selected algo.
-	//np 6: genkey2 (KLINE_AT)
-	//np 7: genkey1 (NPT_DDL2) + scode
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	int errval;
-
-	txdata[0]=0x27;
-	txdata[1]=0x01;	//RequestSeed
-	nisreq.len=2;
-	nisreq.data=txdata;
-	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
-		return CMD_FAILED;
-	if ((rxmsg->len < 6) || (rxmsg->data[0] != 0x67)) {
-		printf("got bad 27 01 response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
-		diag_freemsg(rxmsg);
-		return CMD_FAILED;
-	}
-	printf("Trying SID 27, got seed: ");
-	diag_data_dump(stdout, &rxmsg->data[2], 4);
-
-	txdata[0]=0x27;
-	txdata[1]=0x02;	//SendKey
-	switch (keyalg) {
-	case 1:
-		genkey1(&rxmsg->data[2], scode, &txdata[2]);	//write key to txdata buffer
-		printf("; using NPT_DDL algo (scode=0x%0X), ", scode);
-		break;
-	case 2:
-	default:
-		genkey2(&rxmsg->data[2], &txdata[2]);	//write key to txdata buffer
-		printf("; using KLINE_AT algo, ");
-		break;
-	}
-	diag_freemsg(rxmsg);
-
-	printf("to send key ");
-	diag_data_dump(stdout, &txdata[2], 4);
-	printf("\n");
-
-	nisreq.len=6; //27 02 K K K K
-	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
-		return CMD_FAILED;
-	if (rxmsg->data[0] != 0x67) {
-		printf("got bad 27 02 response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
-		diag_freemsg(rxmsg);
-		return CMD_FAILED;
-	}
-	printf("SUXXESS !!\n");
-
-	diag_freemsg(rxmsg);
-	return CMD_OK;
-}
 
 /** Dump memory to a file (direct binary copy)
  * @param froot: optional; prefix to auto-generated output filename
@@ -844,7 +730,7 @@ int cmd_watch(int argc, char **argv) {
  * @return 16-bit checksum of buffer prior to encryption
  *
  */
-uint16_t encrypt_buf(uint8_t *buf, uint32_t len, uint32_t key) {
+static uint16_t encrypt_buf(uint8_t *buf, uint32_t len, uint32_t key) {
 	uint16_t cks;
 	if (!buf || !len) return 0;
 
@@ -919,7 +805,7 @@ int np_9(int argc, char **argv) {
 	global_l2_conn->diag_l2_p3min = 5;	//0 delay before new req
 
 	/* re-use NP 7 to get the SID27 done */
-	if (np_6_7(1, argv, 1, sid27key) != CMD_OK) {
+	if (sid27_unlock(1, sid27key)) {
 		printf("sid27 problem\n");
 		goto badexit;
 	}
@@ -1639,9 +1525,9 @@ int cmd_npt(int argc, char **argv) {
 			printf("Did not understand %s\n", argv[2]);
 			return CMD_USAGE;
 		}
-		return np_6_7(argc, argv, 1, scode);
+		return sid27_unlock(1, scode);
 	case 6:
-		return np_6_7(argc, argv, 2, 0);
+		return sid27_unlock(2, 0);
 		break;	//case 6,7 (sid27)
 	case 9:
 		return np_9(argc, argv);

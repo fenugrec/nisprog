@@ -24,6 +24,62 @@
 #include "diag_l2_iso14230.h" 	//needed to force header type (nisprog)
 
 #include "nisprog.h"
+#include "nissutils/cli_utils/nislib.h"
+
+
+
+/* algo1.
+ * ( NPT_DDL2 algo (with key-in-ROM) ... niskey1.c )
+ */
+void genkey1(const uint8_t *seed8, uint32_t m, uint8_t *key) {
+	uint32_t seed = reconst_32(seed8);
+	write_32b(enc1(seed, m), key);	//write key in buffer.
+	return;
+}
+
+
+
+/** Encrypt with the kline_at algo... niskey2.c
+ * writes 4 bytes in buffer *key
+ */
+static void genkey2(const uint8_t *seed8, uint8_t *key) {
+	uint32_t seed, ecx, xorloops;
+	int ki;
+
+	const uint32_t keytable[]={0x14FA3579, 0x27CD3964, 0x1777FE32, 0x9931AF12,
+		0x75DB3A49, 0x19294CAA, 0x0FF18CD76, 0x788236D,
+		0x5A6F7CBB, 0x7A992254, 0x0ADFD5414, 0x343CFBCB,
+		0x0C2F51639, 0x6A6D5813, 0x3729FF68, 0x22A2C751};
+
+	seed = reconst_32(seed8);
+
+	ecx = (seed & 1)<<6 | (seed>>9 & 1)<<4 | (seed>>1 & 1)<<3;
+	ecx |= (seed>>11 & 1)<<2 | (seed>>2 & 1)<<1 | (seed>>5 & 1);
+	ecx += 0x1F;
+
+	if (ecx <= 0) {
+		printf("problem !!\n");
+		return;
+	}
+
+	ki = (seed & 1)<<3 | (seed>>1 & 1)<<2 | (seed>>2 & 1)<<1 | (seed>>9 & 1);
+
+	//printf("starting xorloop with ecx=0x%0X, ki=0x%0X\n", ecx, ki);
+
+	for (xorloops=0; xorloops < ecx; xorloops++) {
+		if (seed & 0x80000000) {
+			seed += seed;
+			seed ^= keytable[ki];
+		} else {
+			seed += seed;
+		}
+	}
+	//here, the generated key is in "seed".
+
+	write_32b(seed, key);
+
+	return;
+}
 
 
 int get_ecuid(u8 *dest) {
@@ -61,7 +117,75 @@ int get_ecuid(u8 *dest) {
 }
 
 
-/** do SID 34 80 transaction, ret 0 if ok
+/*
+ * keyalg = 1 for "algo 1" (NPT_DDL2) + scode: widespread)
+ * keyalg = 2 for alternate (genkey2, KLINE_AT)
+ *
+ * @return 0 if successful
+ */
+int sid27_unlock(int keyalg, uint32_t scode) {
+	uint8_t txdata[64];	//data for nisreq
+	struct diag_msg nisreq={0};	//request to send
+	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	int errval;
+
+	txdata[0]=0x27;
+	txdata[1]=0x01;	//RequestSeed
+	nisreq.len=2;
+	nisreq.data=txdata;
+	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
+	if (rxmsg==NULL)
+		return -1;
+	if ((rxmsg->len < 6) || (rxmsg->data[0] != 0x67)) {
+		printf("got bad 27 01 response : ");
+		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+		printf("\n");
+		diag_freemsg(rxmsg);
+		return -1;
+	}
+	printf("Trying SID 27, got seed: ");
+	diag_data_dump(stdout, &rxmsg->data[2], 4);
+
+	txdata[0]=0x27;
+	txdata[1]=0x02;	//SendKey
+	switch (keyalg) {
+	case 1:
+		genkey1(&rxmsg->data[2], scode, &txdata[2]);	//write key to txdata buffer
+		printf("; using NPT_DDL algo (scode=0x%0X), ", scode);
+		break;
+	case 2:
+	default:
+		genkey2(&rxmsg->data[2], &txdata[2]);	//write key to txdata buffer
+		printf("; using KLINE_AT algo, ");
+		break;
+	}
+	diag_freemsg(rxmsg);
+
+	printf("to send key ");
+	diag_data_dump(stdout, &txdata[2], 4);
+	printf("\n");
+
+	nisreq.len=6; //27 02 K K K K
+	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
+	if (rxmsg==NULL)
+		return -1;
+	if (rxmsg->data[0] != 0x67) {
+		printf("got bad 27 02 response : ");
+		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+		printf("\n");
+		diag_freemsg(rxmsg);
+		return -1;
+	}
+	printf("SUXXESS !!\n");
+
+	diag_freemsg(rxmsg);
+	return 0;
+}
+
+
+
+
+/* ret 0 if ok
  *
  * Assumes everything is ok (conn state, etc)
  */
