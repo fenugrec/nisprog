@@ -125,6 +125,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_npconn, 0, NULL},
 	{ "disc", "disc", "Disconnect from ECU (without resetting the ECU if running a kernel)",
 			cmd_npdisc, 0, NULL},
+	{ "npconf", "npconf <paramname> <value>", "Set some extra parameters",
+			cmd_npconf, 0, NULL},
 	{ "watch", "watch <addr>", "Watch 4 bytes @ <addr>",
 			cmd_watch, 0, NULL},
 	{ "dumpmem", "dumpmem <file> <start> <#_of_bytes> [eep]", "(shorthand: \"dm\") dump memory from ROM/RAM address space, or EEPROM if\n"

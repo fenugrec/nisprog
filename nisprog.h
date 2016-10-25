@@ -35,6 +35,7 @@ void nisecu_cleardata(struct nisecu_t *pne);
 /***** CLI command handlers */
 int cmd_npconn(int argc, char **argv);
 int cmd_npdisc(int argc, char **argv);
+int cmd_npconf(int argc, char **argv);
 int cmd_dumpmem(int argc, char **argv);
 int cmd_watch(int argc, char **argv);
 int cmd_npt(int argc, char **argv);

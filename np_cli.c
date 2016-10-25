@@ -37,11 +37,81 @@
 #define NP_RX_EXTRATIMEOUT 20	//ms, added to all timeouts. Adjust to eliminiate read timeout errors
 #define NPK_SPEED 62500	//bps default speed for npkern kernel
 
+
+/** simpler parameter unit than diag_cfgi */
+struct nparam_t {
+	int val;
+	const char *shortname;
+	const char *descr;
+};
+
+
+static struct nparam_t nparam_p3 = {.val = 5, .shortname = "p3", .descr = "P3 time before new request (ms)"};
+static struct nparam_t nparam_rxe = {.val = NP_RX_EXTRATIMEOUT, .shortname = "rxe", .descr = "Extra timeout on receive calls"};
+static struct nparam_t *nparams[] = {
+	&nparam_p3,
+	&nparam_rxe,
+	NULL
+};
+
+
+
 /** fwd decls **/
 static int npkern_init(void);
 static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep);
 static int dump_fast(FILE *outf, const uint32_t start, uint32_t len);
 static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len);
+
+
+
+/* called every time a parameter is changed from the UI */
+static void update_params(void) {
+	if (global_l2_conn) {
+		global_l2_conn->diag_l2_p3min = nparam_p3.val;
+		global_l2_conn->diag_l2_p4min=0;
+	}
+	return;
+}
+
+/* npconf <paramname> <value>
+*/
+int cmd_npconf(int argc, char **argv) {
+	struct nparam_t *npt;
+	bool found = 0;
+	bool helping = 0;
+
+	if (argc != 3) return CMD_USAGE;
+
+	if (argv[1][0] == '?') {
+		helping = 1;
+		printf("param\tcurrent_value\tdescription:\n");
+	}
+
+	// find param name in list
+	unsigned i;
+	for (i = 0; nparams[i]; i++) {
+		npt = nparams[i];
+		if (helping) {
+			printf("%s\t%d\t%s", npt->shortname, npt->val, npt->descr);
+			continue;
+		}
+		if (strcmp(npt->shortname, argv[1]) == 0) {
+			found = 1;
+			break;
+		}
+	}
+
+	if (helping) return CMD_OK;
+
+	if (!found) {
+		printf("Unknown param \"%s\"\n", argv[1]);
+		return CMD_FAILED;
+	}
+	npt->val = htoi(argv[2]);
+	update_params();
+	printf("\t%s set to %d.\n", argv[1], npt->val);
+	return CMD_OK;
+}
 
 
 /* "dumpmem <file> <start> <len> [eep]" */
@@ -181,7 +251,8 @@ int cmd_npconn(int argc, char **argv) {
 	global_l2_conn = d_conn;
 	global_state = STATE_CONNECTED;
 	npstate = NP_NORMALCONN;
-	global_l2_conn->diag_l2_p4min=0;	//0 interbyte spacing
+
+	update_params();
 
 	printf("Connected to ECU !\n");
 
