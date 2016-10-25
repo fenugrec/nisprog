@@ -164,7 +164,7 @@ int cmd_dumpmem(int argc, char **argv) {
 }
 
 #define KEY_CANDIDATES 3
-void select_keyset(void) {
+void autoselect_keyset(void) {
 	unsigned i;
 	u32 s27k;
 	struct ecuid_keymatch_t kcs[KEY_CANDIDATES];
@@ -187,6 +187,8 @@ void select_keyset(void) {
 		}
 	}
 	assert(known_keys[i].s27k != 0);
+	printf("Using best choice, SID27 key=%08lX, SID36 key1=%08lX\nUse \"setkeys\" to change keyset.\n",
+				(unsigned long) known_keys[i].s27k, (unsigned long) known_keys[i].s36k1);
 
 	return;
 }
@@ -270,7 +272,7 @@ int cmd_npconn(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 	printf("ECUID: %s\n", (char *) nisecu.ecuid);
-	select_keyset();
+	autoselect_keyset();
 
 	return CMD_OK;
 }
