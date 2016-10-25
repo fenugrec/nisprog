@@ -71,12 +71,12 @@ int cmd_dumpmem(int argc, char **argv) {
 	//TODO : check for overwrite / append ?
 
 	if ((fpl = fopen(argv[1], "wb"))==NULL) {
-		printf("Cannot open %s !\n", argv[2]);
+		printf("Cannot open %s !\n", argv[1]);
 		return CMD_FAILED;
 	}
 
-	start = (uint32_t) htoi(argv[3]);
-	len = (uint32_t) htoi(argv[4]);
+	start = (uint32_t) htoi(argv[2]);
+	len = (uint32_t) htoi(argv[3]);
 
 	/* Dispatch according to current state */
 
@@ -181,7 +181,19 @@ int cmd_npconn(int argc, char **argv) {
 	global_l2_conn = d_conn;
 	global_state = STATE_CONNECTED;
 	npstate = NP_NORMALCONN;
+	global_l2_conn->diag_l2_p4min=0;	//0 interbyte spacing
+
 	printf("Connected to ECU !\n");
+
+	struct diag_l2_14230 * dlproto;	// for bypassing headers
+	dlproto = (struct diag_l2_14230 *)global_l2_conn->diag_l2_proto_data;
+	if (dlproto->modeflags & ISO14230_SHORTHDR) {
+		printf("Using short headers.\n");
+		dlproto->modeflags &= ~ISO14230_LONGHDR;	//deactivate long headers
+	} else {
+		printf("Short headers not supported by ECU ! Have you \"set addrtype phys\" ?"
+				"Some stuff will not work.");
+	}
 
 	if (get_ecuid(nisecu.ecuid)) {
 		printf("Couldn't get ECUID ? Verify settings, connection mode etc.\n");
@@ -601,7 +613,6 @@ static int dumpmem(const char *froot, uint32_t start, uint32_t len, bool hackmod
 	nextaddr = start;
 	maxaddr = start + len - 1;
 
-	global_l2_conn->diag_l2_p4min=0;	//0 interbyte spacing
 	global_l2_conn->diag_l2_p3min=5;	//5ms before new requests
 
 	snprintf(romfile, DUMPFILESZ, "%s_%X-%X.bin", froot, start, start+len - 1);
@@ -808,7 +819,7 @@ int np_9(int argc, char **argv) {
 	uint32_t file_len;
 	uint32_t pl_len;
 	uint16_t old_p3;
-	uint16_t old_p4;
+
 	FILE *fpl;
 	uint8_t *pl_encr;	//encrypted payload buffer
 
@@ -847,8 +858,6 @@ int np_9(int argc, char **argv) {
 		printf("Using %u (0x0%X) byte payload", file_len, file_len);
 	}
 
-	old_p4 = global_l2_conn->diag_l2_p4min;
-	global_l2_conn->diag_l2_p4min = 0;	//0 interbyte spacing
 	old_p3 = global_l2_conn->diag_l2_p3min;
 	global_l2_conn->diag_l2_p3min = 5;	//0 delay before new req
 
@@ -888,7 +897,6 @@ int np_9(int argc, char **argv) {
 		goto badexit;
 	}
 
-	global_l2_conn->diag_l2_p4min = old_p4;
 	global_l2_conn->diag_l2_p3min = old_p3;
 	free(pl_encr);
 	fclose(fpl);
@@ -904,7 +912,6 @@ int np_9(int argc, char **argv) {
 	return CMD_OK;
 
 badexit:
-	global_l2_conn->diag_l2_p4min = old_p4;
 	global_l2_conn->diag_l2_p3min = old_p3;
 	free(pl_encr);
 	fclose(fpl);
@@ -941,7 +948,6 @@ static int npkern_init(void) {
 	}
 	(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 
-	global_l2_conn->diag_l2_p4min = 0;	//0 interbyte spacing
 	global_l2_conn->diag_l2_p3min = 5;	//5ms before sending new requests
 	dlproto = (struct diag_l2_14230 *)global_l2_conn->diag_l2_proto_data;
 	dlproto->modeflags = ISO14230_SHORTHDR | ISO14230_LENBYTE | ISO14230_FMTLEN;
