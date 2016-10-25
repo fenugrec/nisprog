@@ -48,8 +48,7 @@ static void do_usage (void) {
 
 void nisecu_cleardata(struct nisecu_t *pne) {
 	pne->ecutype = NISECU_UNK;
-	memset(pne->ecuid, 'U', 5);
-	pne->ecuid[5] = 0x00;
+	sprintf((char *) pne->ecuid, "UNK");
 	pne->keyset = NULL;
 	pne->fblock_descr = NULL;
 	return;

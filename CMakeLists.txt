@@ -55,10 +55,14 @@ endif ()
 message(STATUS "Generating make/project files for: ${CMAKE_GENERATOR}")
 
 ###### Type checks
+check_type_size (char CHARSIZE)
 check_type_size (uint8_t UINT8SIZE)
 check_type_size (uint16_t UINT16SIZE)
 check_type_size (uint32_t UINT32SIZE)
 
+if (NOT (${CHARSIZE} EQUAL 1))
+	message(FATAL_ERROR "Error, sizeof(char) must be 1 !")
+endif()
 
 set(L0LIST "dumb" "dumbtest" "sim")
 set(L2LIST "iso9141" "iso14230" "raw")
