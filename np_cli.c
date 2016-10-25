@@ -901,7 +901,8 @@ static uint16_t encrypt_buf(uint8_t *buf, uint32_t len, uint32_t key) {
 /* Does a complete SID 27 + 34 + 36 + BF sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 32 bytes to make SID36 happy
  */
-int np_9(int argc, char **argv) {
+int cmd_runkernel(int argc, char **argv) {
+	const struct keyset_t *keyset;
 	uint32_t sid27key;
 	uint32_t sid36key;
 	uint32_t file_len;
@@ -910,16 +911,26 @@ int np_9(int argc, char **argv) {
 	FILE *fpl;
 	uint8_t *pl_encr;	//encrypted payload buffer
 
-	if (argc != 5) {
-		printf("Transfer + run payload. Usage: npt 9 <payload file> <sid27key> <sid36key>\n");
+	if (argc != 2) {
 		return CMD_USAGE;
 	}
 
-	sid27key = (uint32_t) htoi(argv[3]);
-	sid36key = (uint32_t) htoi(argv[4]);
+	if (npstate != NP_NORMALCONN) {
+		printf("Must be connected normally (nc command) !\n");
+		return CMD_FAILED;
+	}
 
-	if ((fpl = fopen(argv[2], "rb"))==NULL) {
-		printf("Cannot open %s !\n", argv[2]);
+	if (!nisecu.keyset) {
+		printf("No keyset selected - try \"setkeys\"\n");
+		return CMD_FAILED;
+	}
+
+	keyset = nisecu.keyset;
+	sid27key = keyset->s27k;
+	sid36key = keyset->s36k1;
+
+	if ((fpl = fopen(argv[1], "rb"))==NULL) {
+		printf("Cannot open %s !\n", argv[1]);
 		return CMD_FAILED;
 	}
 
@@ -988,6 +999,7 @@ int np_9(int argc, char **argv) {
 
 	if (!npkern_init()) {
 		printf("You may proceed with kernel-specific commands; speed has been changed to %u.\n", NPK_SPEED);
+		npstate = NP_NPKCONN;
 	} else {
 		printf("Problem starting kernel; try to disconnect + set speed + connect again.\n");
 	}
@@ -1599,6 +1611,8 @@ int cmd_npt(int argc, char **argv) {
 		//SID A4: dump the first 256-byte page,
 	case 8:
 		//watch 4 bytes
+	case 9:
+		//send + run payload
 	case 10:
 		//npk fast dump
 		printf("This test has been removed.\n");
@@ -1642,9 +1656,6 @@ int cmd_npt(int argc, char **argv) {
 	case 6:
 		return sid27_unlock(2, 0);
 		break;	//case 6,7 (sid27)
-	case 9:
-		return np_9(argc, argv);
-		break;
 	case 11:
 		return np_11(argc, argv);
 		break;
