@@ -127,11 +127,11 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_npdisc, 0, NULL},
 	{ "watch", "watch <addr>", "Watch 4 bytes @ <addr>",
 			cmd_watch, 0, NULL},
-	{ "dumpmem", "dumpmem <file> <start> <#_of_bytes>", "(shorthand: \"dm\") dump memory from ROM/RAM address space\n"
+	{ "dumpmem", "dumpmem <file> <start> <#_of_bytes> [eep]", "(shorthand: \"dm\") dump memory from ROM/RAM address space, or EEPROM if\n"
+							"\t\"eep\" is added at the end.\n"
 							"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
 			cmd_dumpmem, 0, NULL},
-	{ "dm", "dm <file> <start> <#_of_bytes>", "dump memory from ROM/RAM address space\n"
-							"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
+	{ "dm", "dm <file> <start> <#_of_bytes> [eep]", "dump memory from ROM/RAM/EEPROM",
 			cmd_dumpmem, FLAG_HIDDEN, NULL},
 	{ "npt", "npt [testnum]", "temporary / testing commands. Refer to source code",
 			cmd_npt, 0, NULL},

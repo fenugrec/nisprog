@@ -39,10 +39,58 @@
 
 /** fwd decls **/
 static int npkern_init(void);
+static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep);
+static int dump_fast(FILE *outf, const uint32_t start, uint32_t len);
 static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len);
 
 
-int cmd_dumpmem(UNUSED(int argc), UNUSED(char **argv)) {
+/* "dumpmem <file> <start> <len> [eep]" */
+int cmd_dumpmem(int argc, char **argv) {
+	u32 start, len;
+	FILE *fpl;
+	bool eep = 0;
+
+	if (npstate == NP_DISC) {
+		printf("Not connected !\n");
+		return CMD_FAILED;
+	}
+
+	if ((argc < 4) || (argc > 5)) {
+		return CMD_USAGE;
+	}
+
+	if (argc == 5) {
+		if (strcmp("eep", argv[4]) == 0) {
+			eep = 1;
+		} else {
+			printf("did not recognize \"%s\"\n", argv[4]);
+			return CMD_FAILED;
+		}
+	}
+
+	//TODO : check for overwrite / append ?
+
+	if ((fpl = fopen(argv[1], "wb"))==NULL) {
+		printf("Cannot open %s !\n", argv[2]);
+		return CMD_FAILED;
+	}
+
+	start = (uint32_t) htoi(argv[3]);
+	len = (uint32_t) htoi(argv[4]);
+
+	/* Dispatch according to current state */
+
+	if (npstate == NP_NPKCONN) {
+		if (npk_dump(fpl, start, len, eep)) {
+			return CMD_FAILED;
+		}
+		return CMD_OK;
+	}
+	// npstate == NP_NORMALCONN:
+	if (dump_fast(fpl, start, len)) {
+		return CMD_FAILED;
+	}
+
 	return CMD_OK;
 }
 
@@ -263,10 +311,11 @@ static int np_2(int argc, char **argv) {
 }
 
 
-/* np 4 : dump <len> bytes @<start> to already-opened <outf>;
+/** np 4 : dump <len> bytes @<start> to already-opened <outf>;
  * uses read_ac() (std L2 request + recv mechanism)
+ * return CMD_*
  */
-static int np_4(FILE *outf, uint32_t start, uint32_t len) {
+static int dump_slow(FILE *outf, uint32_t start, uint32_t len) {
 	int retryscore = 100;	/* iteration failures decrease this; success increases it up to 100. Abort when 0. */
 
 	if (!outf) return CMD_FAILED;
@@ -315,10 +364,12 @@ static int np_4(FILE *outf, uint32_t start, uint32_t len) {
 }
 
 
-/* np 5 : fast dump <len> bytes @<start> to already-opened <outf>;
+/** np 5 : fast dump <len> bytes @<start> to already-opened <outf>;
  * uses fast read technique (receive from L1 direct)
+ *
+ * return CMD_*
  */
-static int np_5(FILE *outf, const uint32_t start, uint32_t len) {
+static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 		//SID AC + 21 technique.
 		// AC 81 {83 GGGG} {83 GGGG} ... to load addresses, (5*n + 4) bytes on bus
 		// RX: {EC 81}, 4 bytes
@@ -570,12 +621,12 @@ static int dumpmem(const char *froot, uint32_t start, uint32_t len, bool hackmod
 		dlproto->modeflags &= ~ISO14230_LONGHDR;	//deactivate long headers
 	} else {
 		printf("cannot use hackmode; short headers not supported ! Have you \"set addrtype phys\" ?\n"
-				"Using slow np_4 method as fallback.\n");
+				"Using dump_slow method as fallback.\n");
 		hackmode=0;	//won't work without short headers
 	}
 
 	if (!hackmode) {
-		int rv=np_4(romdump, nextaddr, maxaddr - nextaddr + 1);
+		int rv=dump_slow(romdump, nextaddr, maxaddr - nextaddr + 1);
 		fclose(romdump);
 		if (rv != CMD_OK) {
 			printf("Errors occured, dump may be incomplete.\n");
@@ -583,7 +634,7 @@ static int dumpmem(const char *froot, uint32_t start, uint32_t len, bool hackmod
 		}
 		return CMD_OK;
 	}
-	int rv = np_5(romdump, nextaddr, maxaddr - nextaddr +1);
+	int rv = dump_fast(romdump, nextaddr, maxaddr - nextaddr +1);
 	fclose(romdump);
 	if (rv != CMD_OK) {
 		printf("Errors occured, dump may be incomplete.\n");
@@ -604,7 +655,6 @@ static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 	struct diag_msg nisreq={0};	//request to send
 	struct diag_msg *rxmsg=NULL;	//pointer to the reply
 	int errval;
-	uint32_t addr;
 	uint32_t sent;	//count
 	uint32_t goodbytes;
 
@@ -1019,47 +1069,29 @@ badexit:
 	return -1;
 }
 
-/* npkern-based fastdump (EEPROM / ROM / RAM) */
-/* kernel must be running first (np 9)*/
-static int np_10(int argc, char **argv) {
-	uint32_t start, len;
+/** npkern-based fastdump (EEPROM / ROM / RAM)
+ * kernel must be running first
+ *
+ * return 0 if ok
+ */
+static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 	uint16_t old_p3;
-	FILE *fpl;
 
 	uint8_t txdata[64];	//data for nisreq
 	struct diag_msg nisreq={0};	//request to send
 	int errval;
 
-	bool eep = 0;
 	bool ram = 0;
 
 	nisreq.data=txdata;
 
-	if (argc < 5) {
-		printf("npk-fastdump. Usage: npt 10 <output file> <start> <len> [eep]\n"
-				"ex.: \"npt 10 eeprom_dump.bin 0 512 eep\"\n"
-				"ex.: \"npt 10 romdump_ivt.bin 0 0x400\"\n");
-		return CMD_USAGE;
-	}
-
-	start = (uint32_t) htoi(argv[3]);
-	len = (uint32_t) htoi(argv[4]);
-
 	if (start > 0xFF800000) ram = 1;
-
-	if (argc == 6) {
-		if (strcmp("eep", argv[5]) == 0) eep = 1;
-	}
 
 	if (ram && eep) {
 		printf("bad args\n");
-		return CMD_FAILED;
+		return -1;
 	}
 
-	if ((fpl = fopen(argv[2], "wb"))==NULL) {
-		printf("Cannot open %s !\n", argv[2]);
-		return CMD_FAILED;
-	}
 	old_p3 = global_l2_conn->diag_l2_p3min;
 	global_l2_conn->diag_l2_p3min = 0;	//0 delay before sending new request
 
@@ -1149,13 +1181,13 @@ static int np_10(int argc, char **argv) {
 
 	fclose(fpl);
 	global_l2_conn->diag_l2_p3min = old_p3;
-	return CMD_OK;
+	return 0;
 
 badexit:
 	(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 	fclose(fpl);
 	global_l2_conn->diag_l2_p3min = old_p3;
-	return CMD_FAILED;
+	return -1;
 }
 
 
@@ -1486,6 +1518,8 @@ int cmd_npt(int argc, char **argv) {
 		//SID A4: dump the first 256-byte page,
 	case 8:
 		//watch 4 bytes
+	case 10:
+		//npk fast dump
 		printf("This test has been removed.\n");
 		break;
 	case 5:
@@ -1529,9 +1563,6 @@ int cmd_npt(int argc, char **argv) {
 		break;	//case 6,7 (sid27)
 	case 9:
 		return np_9(argc, argv);
-		break;
-	case 10:
-		return np_10(argc, argv);
 		break;
 	case 11:
 		return np_11(argc, argv);
