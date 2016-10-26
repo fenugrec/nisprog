@@ -137,6 +137,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_stopkernel, 0, NULL},
 	{ "watch", "watch <addr>", "Watch 4 bytes @ <addr>",
 			cmd_watch, 0, NULL},
+	{ "initk", "initk", "Initialize an already-running kernel",
+			cmd_initk, 0, NULL},
 	{ "dumpmem", "dumpmem <file> <start> <#_of_bytes> [eep]", "(shorthand: \"dm\") dump memory from ROM/RAM address space, or EEPROM if\n"
 							"\t\"eep\" is added at the end.\n"
 							"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",

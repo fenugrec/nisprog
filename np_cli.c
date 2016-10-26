@@ -272,13 +272,29 @@ goodexit:
 }
 
 
+int cmd_initk(int argc, char **argv) {
+	(void) argv;
+	if (argc > 1) return CMD_USAGE;
+
+	if ((npstate == NP_DISC) ||
+		(global_state == STATE_IDLE)) {
+		printf("Error : not connected\n");
+		return CMD_FAILED;
+	}
+
+	if (npkern_init()) {
+		printf("npkern_init() error\n");
+		return CMD_FAILED;
+	}
+
+	npstate = NP_NPKCONN;
+	return CMD_OK;
+}
+
+
 
 int cmd_npconn(int argc, char **argv) {
-	if (argc == 2) {
-		if (argv[1][0] == '?') {
-			return CMD_USAGE;
-		}
-	}
+	(void) argv;
 	if (argc > 1) return CMD_USAGE;
 
 	if ((npstate != NP_DISC) ||
@@ -1028,12 +1044,12 @@ int cmd_runkernel(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 
-	if (!nisecu.keyset) {
+	keyset = nisecu.keyset;
+	if (!keyset) {
 		printf("No keyset selected - try \"setkeys\"\n");
 		return CMD_FAILED;
 	}
 
-	keyset = nisecu.keyset;
 	sid27key = keyset->s27k;
 	sid36key = keyset->s36k1;
 

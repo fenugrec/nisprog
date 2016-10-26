@@ -39,6 +39,7 @@ int cmd_setdev(int argc, char **argv);
 int cmd_setkeys(int argc, char **argv);
 int cmd_runkernel(int argc, char **argv);
 int cmd_stopkernel(int argc, char **argv);
+int cmd_initk(int argc, char **argv);
 int cmd_dumpmem(int argc, char **argv);
 int cmd_watch(int argc, char **argv);
 int cmt_tfl(int argc, char **argv);
