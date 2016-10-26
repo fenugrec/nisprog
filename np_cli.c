@@ -1491,13 +1491,8 @@ int cmd_npt(int argc, char **argv) {
 		return CMD_USAGE;
 	}
 
-	if (global_state < STATE_CONNECTED) {
+	if (global_state != STATE_CONNECTED) {
 		printf("Not connected to ECU\n");
-		return CMD_FAILED;
-	}
-
-	if (global_state == STATE_L3ADDED) {
-		printf("This can't be used through L3 !\n");
 		return CMD_FAILED;
 	}
 
@@ -1508,22 +1503,6 @@ int cmd_npt(int argc, char **argv) {
 		break;
 	case 2:
 		return np_2(argc, argv);
-		break;
-	case 0:
-		//request ECUID
-	case 3:
-		//SID A4: dump the first 256-byte page,
-	case 8:
-		//watch 4 bytes
-	case 9:
-		//send + run payload
-	case 10:
-		//npk fast dump
-	case 11:
-		//npk reset
-	case 12:
-		//npk flash single block
-		printf("This test has been removed.\n");
 		break;
 	case 5:
 		//this is a "hack mode" of case 4: instead of using L2's request()
@@ -1565,6 +1544,7 @@ int cmd_npt(int argc, char **argv) {
 		return sid27_unlock(2, 0);
 		break;	//case 6,7 (sid27)
 	default:
+		printf("test # invalid or deprecated\n");
 		return CMD_USAGE;
 		break;
 	}	//switch testnum
