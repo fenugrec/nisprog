@@ -100,6 +100,4 @@ extern const struct flashdev_t flashdevices[];
  */
 int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struct flashdev_t *fdt, bool *modified);
 
-/* temp : */
-int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *goodcrc);
 #endif

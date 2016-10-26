@@ -466,14 +466,14 @@ static u16 crc16(const u8 *data, u32 siz) {
  *
  * Caller must have validated parameters
  *
- * @param goodcrc: result of crc check is written to that variable
+ * @param modified: result of crc check is written to that variable
  * @return 0 if comparison completed correctly
  */
 #define ROMCRC_NUMCHUNKS 4
 #define ROMCRC_CHUNKSIZE 256
 #define ROMCRC_ITERSIZE (ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE)
 #define ROMCRC_LENMASK ((ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE) - 1)	//should look like 0x3FF
-int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *goodcrc) {
+static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *modified) {
 	uint8_t txdata[6];	//data for nisreq
 	struct diag_msg nisreq={0};	//request to send
 	uint8_t rxbuf[10];
@@ -542,11 +542,11 @@ int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *goodcrc
 			goto badexit;
 		}
 		//confirmed bad CRC, we can exit
-		*goodcrc = 0;
+		*modified = 1;
 		return 0;
 	}	//for
 
-	*goodcrc = 1;
+	*modified = 0;
 	return 0;
 
 badexit:
@@ -561,11 +561,14 @@ int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struc
 
 	unsigned blockno;
 
+	printf("\n");
 	for (blockno = 0; blockno < (fdt->numblocks); blockno++) {
 		u32 bs, blen;
 		bs = fdt->fblocks[blockno].start;
 		blen = fdt->fblocks[blockno].len;
 
+		printf("\rchecking block %02u/%02u (%06lX-%06lX)...",
+				blockno, fdt->numblocks -1, (unsigned long) bs, (unsigned long) bs + blen -1);
 		/* compare with caller's buffer if provided: */
 		if (orig_data) {
 			if (memcmp(&src[bs], &orig_data[bs], blen) == 0) {
@@ -573,13 +576,13 @@ int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struc
 			} else {
 				modified[blockno] = 1;
 			}
-			continue;
-		}
-
-		/* otherwise do CRC comparison with ECU */
-		if (check_romcrc(&src[bs], bs, blen, &modified[blockno])) {
-			return -1;
+		} else {
+			/* otherwise do CRC comparison with ECU */
+			if (check_romcrc(&src[bs], bs, blen, &modified[blockno])) {
+				return -1;
+			}
 		}
 	}
+	printf(" done.\n");
 	return 0;
 }

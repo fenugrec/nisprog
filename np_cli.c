@@ -1771,6 +1771,7 @@ int cmt_tfl(int argc, char **argv) {
 	FILE *fpl;
 	uint8_t *newdata;	//file will be copied to this
 	const struct flashdev_t *fdt = nisecu.flashdev;
+	bool *block_modified;
 
 	u32 total_len;
 
@@ -1793,8 +1794,15 @@ int cmt_tfl(int argc, char **argv) {
 		printf("error : data file doesn't match expected length\n");
 		goto badexit_nofree;
 	}
+
+	if (diag_calloc(&block_modified, fdt->numblocks)) {
+		printf("malloc prob\n");
+		goto badexit_nofree;
+	}
+
 	if (diag_malloc(&newdata, total_len)) {
 		printf("malloc prob\n");
+		free(block_modified);
 		goto badexit_nofree;
 	}
 
@@ -1803,21 +1811,20 @@ int cmt_tfl(int argc, char **argv) {
 		goto badexit;
 	}
 
-	unsigned blockno;
+	if (get_changed_blocks(newdata, NULL, fdt, block_modified)) {
+		goto badexit;
+	}
 
-	for (blockno = 0; blockno < (fdt->numblocks); blockno ++) {
-		uint32_t start, len;
-		bool gc = 0;
-		start = fdt->fblocks[blockno].start;
-		len = fdt->fblocks[blockno].len;
-		(void) check_romcrc(&newdata[start], start, len, &gc);
-		printf("\nchecked flblock %u (%06lX-%06lX): crc=%d",
-					blockno, (unsigned long) start, (unsigned long) start + len -1, gc);
+	printf("Different blocks : ");
+	unsigned blockno;
+	for (blockno = 0; blockno < fdt->numblocks; blockno++) {
+		if (block_modified[blockno]) printf("%u, ", blockno);
 	}
 	printf("\n");
 	return CMD_OK;
 
 badexit:
+	free(block_modified);
 	free(newdata);
 badexit_nofree:
 	fclose(fpl);
