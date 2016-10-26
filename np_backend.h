@@ -68,6 +68,38 @@ int sid37(uint16_t cks);
  */
 int sidBF(void);
 
+
+/** defs for SH705x flash block areas
+ */
+
+struct flashblock {
+	uint32_t start;
+	uint32_t len;
+};
+
+struct flashdev_t {
+	const char *name;		// like "7058", for UI convenience only
+
+	const uint32_t romsize;		//in bytes
+	const unsigned numblocks;		//always 16?
+	const struct flashblock *fblocks;
+};
+
+
+/* list of all defined flash devices */
+extern const struct flashdev_t flashdevices[];
+
+
+/** determine which flashblocks are different :
+ * @param src: new ROM data
+ * @param orig_data: optional, if specified : compared against *src
+ * @param modified: (caller-provided) bool array where comparison results are stored
+ *
+ *
+ * return 0 if comparison completed ok
+ */
+int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struct flashdev_t *fdt, bool *modified);
+
 /* temp : */
 int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *goodcrc);
 #endif

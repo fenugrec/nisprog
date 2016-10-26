@@ -24,7 +24,55 @@
 #include "diag_l2_iso14230.h" 	//needed to force header type (nisprog)
 
 #include "nisprog.h"
+#include "np_backend.h"
 #include "nissutils/cli_utils/nislib.h"
+
+
+/* flash block definitions */
+const struct flashblock fblocks_7058[] = {
+	{0x00000000,	0x00001000},
+	{0x00001000,	0x00001000},
+	{0x00002000,	0x00001000},
+	{0x00003000,	0x00001000},
+	{0x00004000,	0x00001000},
+	{0x00005000,	0x00001000},
+	{0x00006000,	0x00001000},
+	{0x00007000,	0x00001000},
+	{0x00008000,	0x00018000},
+	{0x00020000,	0x00020000},
+	{0x00040000,	0x00020000},
+	{0x00060000,	0x00020000},
+	{0x00080000,	0x00020000},
+	{0x000A0000,	0x00020000},
+	{0x000C0000,	0x00020000},
+	{0x000E0000,	0x00020000},
+};
+
+const struct flashblock fblocks_7055[] = {
+	{0x00000000,	0x00001000},
+	{0x00001000,	0x00001000},
+	{0x00002000,	0x00001000},
+	{0x00003000,	0x00001000},
+	{0x00004000,	0x00001000},
+	{0x00005000,	0x00001000},
+	{0x00006000,	0x00001000},
+	{0x00007000,	0x00001000},
+	{0x00008000,	0x00008000},
+	{0x00010000,	0x00010000},
+	{0x00020000,	0x00010000},
+	{0x00030000,	0x00010000},
+	{0x00040000,	0x00010000},
+	{0x00050000,	0x00010000},
+	{0x00060000,	0x00010000},
+	{0x00070000,	0x00010000},
+};
+
+
+const struct flashdev_t flashdevices[] = {
+	{ "7055", 512 * 1024, 16, fblocks_7055 },
+	{ "7058", 1024 * 1024, 16, fblocks_7058 },
+	{ NULL, 0, 0, NULL },
+};
 
 
 
@@ -508,3 +556,30 @@ badexit:
 	return -1;
 }
 
+
+int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struct flashdev_t *fdt, bool *modified) {
+
+	unsigned blockno;
+
+	for (blockno = 0; blockno < (fdt->numblocks); blockno++) {
+		u32 bs, blen;
+		bs = fdt->fblocks[blockno].start;
+		blen = fdt->fblocks[blockno].len;
+
+		/* compare with caller's buffer if provided: */
+		if (orig_data) {
+			if (memcmp(&src[bs], &orig_data[bs], blen) == 0) {
+				modified[blockno] = 0;
+			} else {
+				modified[blockno] = 1;
+			}
+			continue;
+		}
+
+		/* otherwise do CRC comparison with ECU */
+		if (check_romcrc(&src[bs], bs, blen, &modified[blockno])) {
+			return -1;
+		}
+	}
+	return 0;
+}

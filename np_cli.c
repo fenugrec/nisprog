@@ -28,7 +28,6 @@
 
 #include "nisprog.h"
 #include "np_backend.h"
-#include "flashdefs.h"
 #include "nissutils/cli_utils/nislib.h"
 #include "nissutils/cli_utils/ecuid_list.h"
 
@@ -1510,6 +1509,7 @@ static int np_12(int argc, char **argv) {
 	struct diag_msg nisreq={0};	//request to send
 	int errval;
 	struct diag_msg *rxmsg;
+	const struct flashdev_t *fdt = nisecu.flashdev;
 
 	FILE *fpl;
 	uint8_t *newdata;	//file will be copied to this
@@ -1529,15 +1529,20 @@ static int np_12(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 
+	if (!fdt) {
+		printf("device type not set. Try \"setdev ?\"\n");
+		return CMD_FAILED;
+	}
+
 	blockno = (unsigned) htoi(argv[3]);
 
-	if (blockno >= ARRAY_SIZE(fblocks_7058)) {
+	if (blockno >= fdt->numblocks) {
 		printf("block # out of range !\n");
 		return CMD_FAILED;
 	}
 
-	start = fblocks_7058[blockno].start;
-	len = fblocks_7058[blockno].len;
+	start = fdt->fblocks[blockno].start;
+	len = fdt->fblocks[blockno].len;
 
 	if ((fpl = fopen(argv[2], "rb"))==NULL) {
 		printf("Cannot open %s !\n", argv[2]);
