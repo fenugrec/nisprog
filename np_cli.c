@@ -1560,12 +1560,9 @@ int cmd_npt(int argc, char **argv) {
 
 /* tfl <file> */
 int cmt_tfl(int argc, char **argv) {
-	FILE *fpl;
 	uint8_t *newdata;	//file will be copied to this
 	const struct flashdev_t *fdt = nisecu.flashdev;
 	bool *block_modified;
-
-	u32 total_len;
 
 	if (argc != 2) {
 		return CMD_USAGE;
@@ -1576,31 +1573,13 @@ int cmt_tfl(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 
-	if ((fpl = fopen(argv[1], "rb"))==NULL) {
-		printf("Cannot open %s !\n", argv[1]);
-		return CMD_FAILED;
-	}
+	newdata = load_rom(argv[1], fdt->romsize);
+	if (!newdata) return CMD_FAILED;
 
-	total_len = flen(fpl);
-	if (total_len != fdt->romsize) {
-		printf("error : data file doesn't match expected length\n");
-		goto badexit_nofree;
-	}
 
 	if (diag_calloc(&block_modified, fdt->numblocks)) {
 		printf("malloc prob\n");
 		goto badexit_nofree;
-	}
-
-	if (diag_malloc(&newdata, total_len)) {
-		printf("malloc prob\n");
-		free(block_modified);
-		goto badexit_nofree;
-	}
-
-	if (fread(newdata, 1, total_len, fpl) != total_len) {
-		printf("fread prob !?\n");
-		goto badexit;
 	}
 
 	if (get_changed_blocks(newdata, NULL, fdt, block_modified)) {
@@ -1617,9 +1596,8 @@ int cmt_tfl(int argc, char **argv) {
 
 badexit:
 	free(block_modified);
-	free(newdata);
 badexit_nofree:
-	fclose(fpl);
+	free(newdata);
 	return CMD_FAILED;
 
 }
