@@ -14,6 +14,15 @@ struct flashblock {
 	uint32_t len;
 };
 
+struct flashdev_t {
+	const char *name;		// like "7058", for UI convenience only
+
+	const uint32_t romsize;		//in bytes
+	const unsigned numblocks;		//always 16?
+	const struct flashblock *fblocks;
+};
+
+
 const struct flashblock fblocks_7058[] = {
 	{0x00000000,	0x00001000},
 	{0x00001000,	0x00001000},
@@ -51,5 +60,13 @@ const struct flashblock fblocks_7055[] = {
 	{0x00060000,	0x00010000},
 	{0x00070000,	0x00010000},
 };
+
+
+const struct flashdev_t flashdevices[] = {
+	{ "7055", 512 * 1024, 16, fblocks_7055 },
+	{ "7058", 1024 * 1024, 16, fblocks_7058 },
+	{ NULL, 0, 0, NULL },
+};
+
 
 #endif // _FLASHDEFS_H

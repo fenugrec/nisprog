@@ -196,6 +196,43 @@ void autoselect_keyset(void) {
 	return;
 }
 
+/* setdev <device_#> */
+int cmd_setdev(int argc, char **argv) {
+	bool helping = 0;
+	unsigned newid;
+	unsigned idx;
+	const struct flashdev_t *fdt = nisecu.flashdev;
+
+	if (argc != 2) {
+		if (fdt) {
+			printf("current setting : %s\n", fdt->name);
+		}
+		return CMD_USAGE;
+	}
+
+	if (argv[1][0] == '?') {
+		helping = 1;
+		printf("dev #\tname\tROM size\n");
+	}
+
+	newid = htoi(argv[1]);
+
+	for (idx=0; flashdevices[idx].name; idx++) {
+		if (helping) {
+			printf(" %u\t%s\t%uk\n", idx, flashdevices[idx].name, (unsigned) flashdevices[idx].romsize / 1024);
+			continue;
+		}
+		if (idx == newid) {
+			nisecu.flashdev = &flashdevices[idx];
+			printf("now using %s.\n", flashdevices[idx].name);
+			return CMD_OK;
+		}
+	}
+	if (helping) return CMD_OK;
+
+	printf("Invalid device_no, try \"setdev ?\"\n");
+	return CMD_FAILED;
+}
 
 /* setkeys <sid27key> [<sid36key1>] */
 int cmd_setkeys(int argc, char **argv) {

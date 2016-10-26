@@ -18,12 +18,11 @@ enum ecutype_t {
 	};
 
 struct nisecu_t {
-	enum ecutype_t ecutype;	/** decides which flashblock descriptor to use etc */
-
+	//enum ecutype_t ecutype;	/** decides which flashblock descriptor to use etc */
 	uint8_t ecuid[6];		/** ASCIIz */
 
 	const void *keyset;	/** keyset to use */
-	const void *fblock_descr;	/** flashblocks descriptor */
+	const void *flashdev;	/** device descriptor */
 
 } nisecu;
 
@@ -36,6 +35,7 @@ void nisecu_cleardata(struct nisecu_t *pne);
 int cmd_npconn(int argc, char **argv);
 int cmd_npdisc(int argc, char **argv);
 int cmd_npconf(int argc, char **argv);
+int cmd_setdev(int argc, char **argv);
 int cmd_setkeys(int argc, char **argv);
 int cmd_runkernel(int argc, char **argv);
 int cmd_stopkernel(int argc, char **argv);

@@ -47,10 +47,9 @@ static void do_usage (void) {
 }
 
 void nisecu_cleardata(struct nisecu_t *pne) {
-	pne->ecutype = NISECU_UNK;
 	sprintf((char *) pne->ecuid, "UNK");
 	pne->keyset = NULL;
-	pne->fblock_descr = NULL;
+	pne->flashdev = NULL;
 	return;
 }
 
@@ -127,6 +126,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_npdisc, 0, NULL},
 	{ "npconf", "npconf <paramname> <value>", "Set some extra parameters",
 			cmd_npconf, 0, NULL},
+	{ "setdev", "setdev <device_no>", "Set mcu type",
+			cmd_setdev, 0, NULL},
 	{ "setkeys", "setkeys <sid27_key> [<sid36_key>]", "Set ECU keys. Specifying the SID 36 key is optional if the SID 27 key is a known keyset.\n"
 													"Please consider submitting new keys to be added to the list !\n",
 			cmd_setkeys, 0, NULL},
