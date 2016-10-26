@@ -421,7 +421,10 @@ static u16 crc16(const u8 *data, u32 siz) {
  * @param goodcrc: result of crc check is written to that variable
  * @return 0 if comparison completed correctly
  */
-#define NPK_CRC_CHUNKSIZE 256
+#define ROMCRC_NUMCHUNKS 4
+#define ROMCRC_CHUNKSIZE 256
+#define ROMCRC_ITERSIZE (ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE)
+#define ROMCRC_LENMASK ((ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE) - 1)	//should look like 0x3FF
 int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *goodcrc) {
 	uint8_t txdata[6];	//data for nisreq
 	struct diag_msg nisreq={0};	//request to send
@@ -430,30 +433,35 @@ int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *goodcrc
 	uint16_t chunko;
 	//uint16_t maxchunks;
 
-	len = (len + 1) & ~(NPK_CRC_CHUNKSIZE - 1);
+	len = (len + ROMCRC_LENMASK) & ~ROMCRC_LENMASK;
 
-	chunko = start / NPK_CRC_CHUNKSIZE;
-	//maxchunks = (len / NPK_CRC_CHUNKSIZE) - 1;
+	chunko = start / ROMCRC_CHUNKSIZE;
 
-		//request format : <SID_CONF> <SID_CONF_CKS1> <CRCH> <CRCL> <CNH> <CNL>
-		//verify if <CRCH:CRCL> hash is valid for a 256B chunk of the ROM (starting at <CNH:CNL> * 256)
+		//request format : <SID_CONF> <SID_CONF_CKS1> <CNH> <CNL> <CRC0H> <CRC0L> ...<CRC3H> <CRC3L>
+		//verify if <CRCH:CRCL> hash is valid for n*256B chunk of the ROM (starting at <CNH:CNL> * 256)
 #define SID_CONF 0xBE
+	unsigned txi;
 	txdata[0]=SID_CONF;
 	txdata[1]=0x03;
-		//txdata[2] and [3] is the CRC,
-		//txdata[4] and [5] is the chunk #
 
 	nisreq.data=txdata;
-	nisreq.len= 6;
 
-	for (; len > 0; len -= NPK_CRC_CHUNKSIZE, chunko += 1) {
 
-		u16 chunk_crc = crc16(src, NPK_CRC_CHUNKSIZE);
-		src += NPK_CRC_CHUNKSIZE;
-		txdata[2] = chunk_crc >> 8;
-		txdata[3] = chunk_crc & 0xFF;
-		txdata[4] = chunko >> 8;
-		txdata[5] = chunko & 0xFF;
+	for (; len > 0; len -= ROMCRC_ITERSIZE, chunko += ROMCRC_NUMCHUNKS) {
+		txi = 2;
+		txdata[txi++] = chunko >> 8;
+		txdata[txi++] = chunko & 0xFF;
+
+		//fill the request with n*CRCs
+		unsigned chunk_cnt;
+		for (chunk_cnt = 0; chunk_cnt < ROMCRC_NUMCHUNKS; chunk_cnt++) {
+			u16 chunk_crc = crc16(src, ROMCRC_CHUNKSIZE);
+			src += ROMCRC_CHUNKSIZE;
+			txdata[txi++] = chunk_crc >> 8;
+			txdata[txi++] = chunk_crc & 0xFF;
+		}
+		nisreq.len = txi;
+
 
 		//rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
 		errval = diag_l2_send(global_l2_conn, &nisreq);
