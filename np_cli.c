@@ -1392,141 +1392,19 @@ badexit:
 }
 
 
-/* special checksum for reflash blocks:
- * "one's complement" checksum; if adding causes a carry, add 1 to sum. Slightly better than simple 8bit sum
- */
-static uint8_t cks_add8(uint8_t *data, unsigned len) {
-	uint16_t sum = 0;
-	for (; len; len--, data++) {
-		sum += *data;
-		if (sum & 0x100) sum += 1;
-		sum = (uint8_t) sum;
-	}
-	return sum;
-}
-
-
-/* ret 0 if ok. For use by np_12,
- * assumes parameters have been validated,
- * and appropriate block has been erased
- */
-
-static int npk_raw_flashblock(uint8_t *src, uint32_t start, uint32_t len) {
-
-	/* program 128-byte chunks */
-	uint32_t remain = len;
-
-	uint8_t txdata[134];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	int errval;
-	nisreq.data = txdata;
-
-	unsigned long t0, chrono;
-
-	if ((len & (128 - 1)) ||
-		(start & (128 - 1))) {
-		printf("error: misaligned start / length ! \n");
-		return -1;
-	}
-
-	txdata[0]=0xBC;
-	txdata[1]=0x02;
-	nisreq.len = 134;	//2 (header) + 3 (addr) + 128 (payload) + 1 (extra CRC)
-
-	t0 = diag_os_getms();
-
-
-	while (remain) {
-		uint8_t rxbuf[10];
-		unsigned curspeed, tleft;
-
-		chrono = diag_os_getms() - t0;
-		if (!chrono) chrono += 1;
-		curspeed = 1000 * (len - remain) / chrono;	//avg B/s
-		if (!curspeed) curspeed += 1;
-		tleft = remain / curspeed;	//s
-		if (tleft > 9999) tleft = 9999;
-
-		printf("\rwriting chunk @ 0x%06X (%3u %%, %5u B/s, ~ %4u s remaining)", start, (unsigned) 100 * (len - remain) / len,
-				curspeed, tleft);
-
-		txdata[2] = start >> 16;
-		txdata[3] = start >> 8;
-		txdata[4] = start >> 0;
-		memcpy(&txdata[5], src, 128);
-		txdata[133] = cks_add8(&txdata[2], 131);
-
-		errval = diag_l2_send(global_l2_conn, &nisreq);
-		if (errval) {
-			printf("l2_send error!\n");
-			return -1;
-		}
-
-		/* expect exactly 3 bytes, but with generous timeout */
-		//rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 300);
-		if (errval <= 1) {
-			printf("\n\tProblem: no response @ %X\n", (unsigned) start);
-			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-			return -1;
-		}
-		if (errval < 3) {
-			printf("\n\tProblem: incomplete response @ %X\n", (unsigned) start);
-			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-			diag_data_dump(stdout, rxbuf, errval);
-			printf("\n");
-			return -1;
-		}
-
-		if (rxbuf[1] != 0xFC) {
-			//maybe negative response, if so, get the remaining packet
-			printf("\n\tProblem: bad response @ %X\n", (unsigned) start);
-
-			int needed = 1 + rxbuf[0] - errval;
-			if (needed > 0) {
-				errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, &rxbuf[errval], needed, 300);
-			}
-			if (errval < 0) errval = 0;	//floor
-			diag_data_dump(stdout, rxbuf, rxbuf[0] + errval);
-			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-			return -1;
-		}
-
-		remain -= 128;
-		start += 128;
-		src += 128;
-
-	}	//while len
-	printf("\nWrite complete.\n");
-
-	return 0;
-}
-
 /* reflash a given block !
  */
-static int np_12(int argc, char **argv) {
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	int errval;
-	struct diag_msg *rxmsg;
+int cmd_flblock(int argc, char **argv) {
 	const struct flashdev_t *fdt = nisecu.flashdev;
 
-	FILE *fpl;
-	uint8_t *newdata;	//file will be copied to this
+	uint8_t *newdata;	//block data will be copied in this
 
 	unsigned blockno;
-	uint32_t start;
-	uint32_t len;
 
-	bool for_real = 0;	//if set, enables real flash erase + write
+	bool practice = 1;	//if set, disable modification to flash
 
-	nisreq.data=txdata;
-
-	if (argc <= 3) {
-		printf("npk-blockwrite. Usage: npt 12 <data.bin> <blockno> [Y]\n"
-				"If 'Y' is absent, will run in \"practice\" mode (no erase / write).\n"
-				"ex.: \"npt 12 blk_0xE0000-0xFFFFF.bin 15 Y\"\n");
-		return CMD_FAILED;
+	if ((argc < 3) || (argc > 4)) {
+		return CMD_USAGE;
 	}
 
 	if (!fdt) {
@@ -1534,41 +1412,32 @@ static int np_12(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 
-	blockno = (unsigned) htoi(argv[3]);
+	blockno = (unsigned) htoi(argv[2]);
 
 	if (blockno >= fdt->numblocks) {
 		printf("block # out of range !\n");
 		return CMD_FAILED;
 	}
 
-	start = fdt->fblocks[blockno].start;
-	len = fdt->fblocks[blockno].len;
+	newdata = load_rom(argv[1], fdt->romsize);
 
-	if ((fpl = fopen(argv[2], "rb"))==NULL) {
-		printf("Cannot open %s !\n", argv[2]);
-		return CMD_FAILED;
-	}
+	if (!newdata) return CMD_FAILED;
 
-	if ((uint32_t) flen(fpl) != len) {
-		printf("error : data file doesn't match expected block length %uk\n", (unsigned) len / 1024);
-		goto badexit_nofree;
-	}
-
-	if (argc == 5) {
-		if (argv[4][0] == 'Y') printf("*** FLASH WILL BE MODIFIED ***\n");
-		for_real = 1;
+	if (argc == 4) {
+		if (argv[3][0] == 'Y') printf("*** FLASH MAY BE MODIFIED ***\n");
+		(void) diag_os_ipending();	//must be done outside the loop first
+		printf("*** Last chance : operation will be safely aborted in 3 seconds. ***\n"
+				"*** Press ENTER to MODIFY FLASH ***\n");
+		diag_os_millisleep(3500);
+		if (diag_os_ipending()) {
+			printf("Proceeding with flash process.\n");
+		} else {
+			printf("Operation aborted; flash was not modified.\n");
+			goto badexit;
+		}
+		practice = 0;
 	} else {
 		printf("*** Running in practice mode, flash will not be modified ***\n");
-	}
-
-	if (diag_malloc(&newdata, len)) {
-		printf("malloc prob\n");
-		goto badexit_nofree;
-	}
-
-	if (fread(newdata, 1, len, fpl) != len) {
-		printf("fread prob !?\n");
-		goto badexit;
 	}
 
 	if (npkern_init()) {
@@ -1576,93 +1445,17 @@ static int np_12(int argc, char **argv) {
 		goto badexit;
 	}
 
-	/* 1- requestdownload */
-	txdata[0]=0x34;
-	nisreq.len = 1;
-	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
-		goto badexit;
-	if (rxmsg->data[0] != 0x74) {
-		printf("got bad RequestDownload response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
-		diag_freemsg(rxmsg);
-		goto badexit;
+	u32 bstart = fdt->fblocks[blockno].start;
+
+	if (reflash_block(&newdata[bstart], fdt, blockno, practice) == CMD_OK) {
+		printf("Reflash complete.\n");
+		free(newdata);
+		npkern_init();	//forces the kernel to disable write mode
+		return CMD_OK;
 	}
 
-	/* 2- Unprotect maybe. TODO : use SID defines here and after */
-	if (for_real) {
-		(void) diag_os_ipending();	//must be done outside the loop first
-		printf("*** Last chance : operation will be safely aborted in 3 seconds. ***\n"
-				"*** Press ENTER to MODIFY FLASH ***\n");
-		diag_os_millisleep(3000);
-		if (diag_os_ipending()) {
-			printf("Proceeding with flash process.\n");
-		} else {
-			printf("Operation aborted; flash was not modified.\n");
-			goto badexit;
-		}
-
-		txdata[0]=0xBC;
-		txdata[1]=0x55;
-		txdata[2]=0xaa;
-		nisreq.len = 3;
-		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-		if (rxmsg==NULL)
-			goto badexit_reprotect;
-		if (rxmsg->data[0] != 0xFC) {
-			printf("got bad Unprotect response : ");
-			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-			printf("\n");
-			diag_freemsg(rxmsg);
-			goto badexit_reprotect;
-		}
-		printf("Entered flashing_enabled (unprotected) mode\n");
-	}
-
-	/* 3- erase block */
-	printf("Erasing block %u (0x%06X-0x%06X)...\n",
-			blockno, (unsigned) start, (unsigned) start + len - 1);
-	txdata[0] = 0xBC;
-	txdata[1] = 0x01;
-	txdata[2] = blockno;
-	nisreq.len = 3;
-	/* Problem : erasing can take a lot more than the default P2max for iso14230 */
-	uint16_t old_p2max = global_l2_conn->diag_l2_p2max;
-	global_l2_conn->diag_l2_p2max = 1200;
-	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-	global_l2_conn->diag_l2_p2max = old_p2max;	//restore p2max; the rest should be OK
-	if (rxmsg==NULL) {
-		printf("no ERASE_BLOCK response?\n");
-		goto badexit_reprotect;
-	}
-	if (rxmsg->data[0] != 0xFC) {
-		printf("got bad ERASE_BLOCK response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
-		diag_freemsg(rxmsg);
-		goto badexit_reprotect;
-	}
-
-	/* 4- write */
-	errval = npk_raw_flashblock(newdata, start, len);
-	if (errval) {
-		printf("\nReflash error ! Do not panic, do not reset the ECU immediately. The kernel is "
-				"most likely still running and receiving commands !\n");
-		goto badexit_reprotect;
-	}
-
-	printf("Reflash complete; you may dump the ROM again to be extra sure\n");
-	free(newdata);
-	fclose(fpl);
-	return CMD_OK;
-
-badexit_reprotect:
-	npkern_init();	//forces the kernel to disable write mode
 badexit:
 	free(newdata);
-badexit_nofree:
-	fclose(fpl);
 	return CMD_FAILED;
 }
 
@@ -1712,6 +1505,8 @@ int cmd_npt(int argc, char **argv) {
 		//npk fast dump
 	case 11:
 		//npk reset
+	case 12:
+		//npk flash single block
 		printf("This test has been removed.\n");
 		break;
 	case 5:
@@ -1753,9 +1548,6 @@ int cmd_npt(int argc, char **argv) {
 	case 6:
 		return sid27_unlock(2, 0);
 		break;	//case 6,7 (sid27)
-	case 12:
-		return np_12(argc, argv);
-		break;
 	default:
 		return CMD_USAGE;
 		break;

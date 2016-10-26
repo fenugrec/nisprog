@@ -94,7 +94,7 @@ extern const struct flashdev_t flashdevices[];
  *
  * @return if success: new buffer to be free'd by caller
  */
-uint8_t load_rom(const char *fname, uint32_t expect_size);
+uint8_t *load_rom(const char *fname, uint32_t expect_size);
 
 /** determine which flashblocks are different :
  * @param src: new ROM data
@@ -110,7 +110,7 @@ int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struc
 /** reflash a single block.
  * @param newdata : data for the block of interest (not whole ROM)
  * @param practice : if 1, ROM will not be modified
- * ret CMD_OK if ok
+ * ret 0 if ok
  */
 int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned blockno, bool practice);
 

@@ -28,6 +28,8 @@
 #include "nissutils/cli_utils/nislib.h"
 
 
+#define CURFILE "np_backend.c"	//HAAAX
+
 /* flash block definitions */
 const struct flashblock fblocks_7058[] = {
 	{0x00000000,	0x00001000},
@@ -585,4 +587,248 @@ int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struc
 	}
 	printf(" done.\n");
 	return 0;
+}
+
+
+
+
+/* special checksum for reflash blocks:
+ * "one's complement" checksum; if adding causes a carry, add 1 to sum. Slightly better than simple 8bit sum
+ */
+static uint8_t cks_add8(uint8_t *data, unsigned len) {
+	uint16_t sum = 0;
+	for (; len; len--, data++) {
+		sum += *data;
+		if (sum & 0x100) sum += 1;
+		sum = (uint8_t) sum;
+	}
+	return sum;
+}
+
+
+/* ret 0 if ok. For use by reflash_block(),
+ * assumes parameters have been validated,
+ * and appropriate block has been erased
+ */
+
+static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) {
+
+	/* program 128-byte chunks */
+	uint32_t remain = len;
+
+	uint8_t txdata[134];	//data for nisreq
+	struct diag_msg nisreq={0};	//request to send
+	int errval;
+	nisreq.data = txdata;
+
+	unsigned long t0, chrono;
+
+	if ((len & (128 - 1)) ||
+		(start & (128 - 1))) {
+		printf("error: misaligned start / length ! \n");
+		return -1;
+	}
+
+	txdata[0]=0xBC;
+	txdata[1]=0x02;
+	nisreq.len = 134;	//2 (header) + 3 (addr) + 128 (payload) + 1 (extra CRC)
+
+	t0 = diag_os_getms();
+
+
+	while (remain) {
+		uint8_t rxbuf[10];
+		unsigned curspeed, tleft;
+
+		chrono = diag_os_getms() - t0;
+		if (!chrono) chrono += 1;
+		curspeed = 1000 * (len - remain) / chrono;	//avg B/s
+		if (!curspeed) curspeed += 1;
+		tleft = remain / curspeed;	//s
+		if (tleft > 9999) tleft = 9999;
+
+		printf("\rwriting chunk @ 0x%06X (%3u %%, %5u B/s, ~ %4u s remaining)", start, (unsigned) 100 * (len - remain) / len,
+				curspeed, tleft);
+
+		txdata[2] = start >> 16;
+		txdata[3] = start >> 8;
+		txdata[4] = start >> 0;
+		memcpy(&txdata[5], src, 128);
+		txdata[133] = cks_add8(&txdata[2], 131);
+
+		errval = diag_l2_send(global_l2_conn, &nisreq);
+		if (errval) {
+			printf("l2_send error!\n");
+			return -1;
+		}
+
+		/* expect exactly 3 bytes, but with generous timeout */
+		//rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 300);
+		if (errval <= 1) {
+			printf("\n\tProblem: no response @ %X\n", (unsigned) start);
+			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+			return -1;
+		}
+		if (errval < 3) {
+			printf("\n\tProblem: incomplete response @ %X\n", (unsigned) start);
+			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+			diag_data_dump(stdout, rxbuf, errval);
+			printf("\n");
+			return -1;
+		}
+
+		if (rxbuf[1] != 0xFC) {
+			//maybe negative response, if so, get the remaining packet
+			printf("\n\tProblem: bad response @ %X\n", (unsigned) start);
+
+			int needed = 1 + rxbuf[0] - errval;
+			if (needed > 0) {
+				errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, &rxbuf[errval], needed, 300);
+			}
+			if (errval < 0) errval = 0;	//floor
+			diag_data_dump(stdout, rxbuf, rxbuf[0] + errval);
+			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+			return -1;
+		}
+
+		remain -= 128;
+		start += 128;
+		src += 128;
+
+	}	//while len
+	printf("\nWrite complete.\n");
+
+	return 0;
+}
+
+
+
+int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned blockno, bool practice) {
+	uint8_t txdata[64];	//data for nisreq
+	struct diag_msg nisreq={0};	//request to send
+	int errval;
+	struct diag_msg *rxmsg;
+
+	uint32_t start;
+	uint32_t len;
+
+	nisreq.data=txdata;
+
+	if (blockno >= fdt->numblocks) {
+		printf("block # out of range !\n");
+		return -1;
+	}
+
+	start = fdt->fblocks[blockno].start;
+	len = fdt->fblocks[blockno].len;
+
+	/* 1- requestdownload */
+	txdata[0]=0x34;
+	nisreq.len = 1;
+	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+	if (rxmsg==NULL)
+		goto badexit;
+	if (rxmsg->data[0] != 0x74) {
+		printf("got bad RequestDownload response : ");
+		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+		printf("\n");
+		diag_freemsg(rxmsg);
+		goto badexit;
+	}
+
+	/* 2- Unprotect maybe. TODO : use SID defines here and after */
+	if (!practice) {
+		txdata[0]=0xBC;
+		txdata[1]=0x55;
+		txdata[2]=0xaa;
+		nisreq.len = 3;
+		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+		if (rxmsg==NULL)
+			goto badexit;
+		if (rxmsg->data[0] != 0xFC) {
+			printf("got bad Unprotect response : ");
+			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+			printf("\n");
+			diag_freemsg(rxmsg);
+			goto badexit;
+		}
+		printf("Entered flashing_enabled (unprotected) mode\n");
+	}
+
+	/* 3- erase block */
+	printf("Erasing block %u (0x%06X-0x%06X)...\n",
+			blockno, (unsigned) start, (unsigned) start + len - 1);
+	txdata[0] = 0xBC;
+	txdata[1] = 0x01;
+	txdata[2] = blockno;
+	nisreq.len = 3;
+	/* Problem : erasing can take a lot more than the default P2max for iso14230 */
+	uint16_t old_p2max = global_l2_conn->diag_l2_p2max;
+	global_l2_conn->diag_l2_p2max = 1800;
+	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+	global_l2_conn->diag_l2_p2max = old_p2max;	//restore p2max; the rest should be OK
+	if (rxmsg==NULL) {
+		printf("no ERASE_BLOCK response?\n");
+		goto badexit;
+	}
+	if (rxmsg->data[0] != 0xFC) {
+		printf("got bad ERASE_BLOCK response : ");
+		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+		printf("\n");
+		diag_freemsg(rxmsg);
+		goto badexit;
+	}
+
+	/* 4- write */
+	errval = npk_raw_flashblock(newdata, start, len);
+	if (errval) {
+		printf("\nReflash error ! Do not panic, do not reset the ECU immediately. The kernel is "
+				"most likely still running and receiving commands !\n");
+		goto badexit;
+	}
+
+	return 0;
+
+badexit:
+	return -1;
+
+}
+
+uint8_t *load_rom(const char *fname, uint32_t expect_size) {
+	FILE *fpl;
+	uint8_t *buf;
+
+	if (!fname) return NULL;
+	if (!expect_size) return NULL;
+
+	if ((fpl = fopen(fname, "rb"))==NULL) {
+		printf("Cannot open %s !\n", fname);
+		return NULL;
+	}
+
+	u32 file_len = flen(fpl);
+	if (file_len != expect_size) {
+		printf("error : wrong file length 0x%06lX (wanted 0x%06lX)!\n",
+				(unsigned long) file_len, (unsigned long) expect_size);
+		goto badexit;
+	}
+
+	if (diag_malloc(&buf, file_len)) {
+		printf("malloc prob\n");
+		goto badexit;
+	}
+
+	if (fread(buf, 1, file_len, fpl) != file_len) {
+		printf("fread prob !?\n");
+		free(buf);
+		goto badexit;
+	}
+
+	fclose(fpl);
+	return buf;
+
+badexit:
+	fclose(fpl);
+	return NULL;
 }

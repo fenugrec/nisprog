@@ -145,6 +145,10 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_dumpmem, FLAG_HIDDEN, NULL},
 	{ "tfl", "tfl <file>", "[test] compare CRC of ROM to file",
 			cmt_tfl, 0, NULL},
+	{ "flblock", "flblock <romfile> <blockno> [Y]", "Reflash a single block from <romfile>. "
+							"If 'Y' is absent, this runs in \"practice\" mode (without modifying flash ROM).\n"
+							"ex.: \"flblock wholerom.bin 15 Y\"\n",
+			cmd_flblock, 0, NULL},
 	{ "npt", "npt [testnum]", "temporary / testing commands. Refer to source code",
 			cmd_npt, 0, NULL},
 	{ NULL, NULL, NULL, NULL, 0, NULL}
