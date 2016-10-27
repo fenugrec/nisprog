@@ -30,6 +30,7 @@ enum npstate_t npstate;
 
 
 #define NP_PROGNAME "nisprog"
+#define NP_VERSION "1.00"	//TODO !!!
 
 const struct cmd_tbl_entry np_cmdtable[];
 
@@ -104,6 +105,8 @@ int main(int argc, char **argv) {
 		printf("Problem in np_init() !?\n");
 		goto badexit;
 	}
+
+	printf("%s v%s\n", NP_PROGNAME, NP_VERSION);;
 
 	enter_cli(NP_PROGNAME, startfile, np_cmdtable);
 

@@ -2,6 +2,7 @@
 
 Finally, an open-source solution to work on and modify Nissan ECUs !
 
+TLDR; go read USING.txt
 
 (note : if you're looking for the command-line utilities previously found in this "nisprog" repo,
 they've [been moved to nissutils](https://github.com/fenugrec/nissutils) . Sorry for any inconvenience.
