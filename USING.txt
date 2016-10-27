@@ -1,0 +1,96 @@
+I'm not going to write a nice manual for this.
+
+**** getting help inside nisprog
+In nisprog, you can do either
+"help <whatever_command>"
+or
+"commandname ?" to get descriptions and help etc. I think the rest should be pretty self-explanatory.
+
+**** command availability vs npkern
+The main idea is that some commands only work if the ECU is running npkern (see github.com/fenugrec/npkern ) :
+		flverif
+		flblock
+		flrom
+OTOH, "dumpmem" works always, but is way way faster with npkern running.
+
+For that, you'll need an npkern kernel (compiled of course, maybe npkern_7058.bin ). See "runkernel" command
+
+**** If you get in trouble (weird errors, etc)
+"debug l1 0x8c" will show sent/received data.
+try adjusting timing, etc.
+If you want me to help, I'll need
+		full console output (previous commands, all errors etc)
+		nisprog version
+		OS, K line hardware / drivers, etc.
+
+filing issues on GitHub is ok. Or you can post on the RomRaider forums.
+
+
+**** special "submenu" commands
+some commands (like "set", "debug", etc) also act as submenus, i.e.
+######
+set
+interface dumb
+port asdfasdf
+up
+## does the same thing as
+set interface dumb
+set port asdfasdf
+######
+
+
+
+Here are some example commands.
+Note, these may become invalid as I work on nisprog and forget to update.
+
+#######################################
+
+set
+interface dumb
+port \\.\COM19
+dumbopts 0x48
+
+#sorry, you still need these
+l2protocol iso14230
+initmode fast
+testerid 0xfc
+destaddr 0x10
+addrtype phys
+up
+
+#connect : don't use "diag connect" anymore
+nc
+
+#optional, if your ECUID needs special keys (let me know if this happens !)
+#setkeys 0x55552727 0xAAAA3636
+
+#try "setdev ?" to see choices, i.e. 7055 / 7058
+setdev 1
+
+#some extra parameters if you're having timing issues (frequent read timeouts etc)
+#try "npconf ?"
+npconf p3 0
+
+runkernel D:\dev\nis_kernels\npkern\npkern.bin
+
+#dump command, uses regular fastdump or npkern fastdump if available
+dumpmem asdf.bin 0 255
+
+#find differences between ECU and specified file
+flverif patched_rom.bin
+
+#don't really use this one (reflash single block).
+#flblock orig_rom.bin 14
+
+#reflash !
+flrom whatever_rom.bin
+
+#timing errors ? add some delays with "npconf" and try again.
+#Don't panic, and DO NOT POWER OFF THE ECU if you suspect there were write errors !
+
+#all done ? are you sure ? then reset the ECU to leave kernel mode
+stopkernel
+
+#and disconnect / quit
+npdisc
+quit
