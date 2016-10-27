@@ -42,8 +42,9 @@ int cmd_stopkernel(int argc, char **argv);
 int cmd_initk(int argc, char **argv);
 int cmd_dumpmem(int argc, char **argv);
 int cmd_watch(int argc, char **argv);
-int cmt_tfl(int argc, char **argv);
+int cmd_flverif(int argc, char **argv);
 int cmd_flblock(int argc, char **argv);
+int cmd_flrom(int argc, char **argv);
 int cmd_npt(int argc, char **argv);
 
 #endif

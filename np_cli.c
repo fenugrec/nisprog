@@ -1428,6 +1428,11 @@ int cmd_flblock(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 
+	if (npstate != NP_NPKCONN) {
+		printf("kernel not initialized - try \"runkernel\" or \"initk\"\n");
+		return CMD_FAILED;
+	}
+
 	blockno = (unsigned) htoi(argv[2]);
 
 	if (blockno >= fdt->numblocks) {
@@ -1554,8 +1559,8 @@ int cmd_npt(int argc, char **argv) {
 }
 
 
-/* tfl <file> */
-int cmt_tfl(int argc, char **argv) {
+/* flverif <file> */
+int cmd_flverif(int argc, char **argv) {
 	uint8_t *newdata;	//file will be copied to this
 	const struct flashdev_t *fdt = nisecu.flashdev;
 	bool *block_modified;
@@ -1566,6 +1571,11 @@ int cmt_tfl(int argc, char **argv) {
 
 	if (!fdt) {
 		printf("device type not set. Try \"setdev ?\"\n");
+		return CMD_FAILED;
+	}
+
+	if (npstate != NP_NPKCONN) {
+		printf("kernel not initialized - try \"runkernel\" or \"initk\"\n");
 		return CMD_FAILED;
 	}
 
@@ -1594,6 +1604,93 @@ badexit:
 	free(block_modified);
 badexit_nofree:
 	free(newdata);
+	return CMD_FAILED;
+
+}
+
+/* flrom <newrom> [<oldrom>] : flash whole ROM */
+int cmd_flrom(int argc, char **argv) {
+	uint8_t *newdata;	//file will be copied to this
+	u8 *oldrom;
+
+	const struct flashdev_t *fdt = nisecu.flashdev;
+	bool *block_modified;
+
+	if ((argc < 2) || (argc > 3)) {
+		return CMD_USAGE;
+	}
+
+	if (!fdt) {
+		printf("device type not set. Try \"setdev ?\"\n");
+		return CMD_FAILED;
+	}
+
+	if (npstate != NP_NPKCONN) {
+		printf("kernel not initialized - try \"runkernel\" or \"initk\"\n");
+		return CMD_FAILED;
+	}
+
+	oldrom = NULL;
+	if (argc == 3) {
+		oldrom = load_rom(argv[2], fdt->romsize);
+		if (!oldrom) return CMD_FAILED;
+	}
+
+	newdata = load_rom(argv[1], fdt->romsize);
+	if (!newdata) {
+		free(oldrom);
+		return CMD_FAILED;
+	}
+
+	if (diag_calloc(&block_modified, fdt->numblocks)) {
+		printf("malloc prob\n");
+		goto badexit_nofree;
+	}
+
+	if (get_changed_blocks(newdata, oldrom, fdt, block_modified)) {
+		goto badexit;
+	}
+
+	printf("Modified blocks : ");
+	unsigned blockno;
+	for (blockno = 0; blockno < fdt->numblocks; blockno++) {
+		if (block_modified[blockno]) printf("%u, ", blockno);
+	}
+
+	printf("\n\ty : To reflash the blocks listed above, enter 'y'.\n"
+			"\tf : to reflash the whole ROM, enter 'f'\n"
+			"\tn : To abort/cancel, enter 'n'\n");
+
+	char *inp = basic_get_input("> ");
+	switch (inp[0]) {
+	case 'y':
+		printf("reflashing selected blocks.\n");
+		break;
+	case 'f':
+		/* set all blockflags as modified */
+		for (blockno = 0; blockno < fdt->numblocks; blockno++) {
+			block_modified[blockno] = 1;
+		}
+		printf("reflashing ALL blocks.\n");
+		break;
+	default:
+		printf("Aborting.\n");
+		goto goodexit;
+		break;
+	}
+
+
+goodexit:
+	free(block_modified);
+	free(newdata);
+	free(oldrom);
+	return CMD_OK;
+
+badexit:
+	free(block_modified);
+badexit_nofree:
+	free(newdata);
+	free(oldrom);
 	return CMD_FAILED;
 
 }
