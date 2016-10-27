@@ -1657,14 +1657,22 @@ int cmd_flrom(int argc, char **argv) {
 		if (block_modified[blockno]) printf("%u, ", blockno);
 	}
 
-	printf("\n\ty : To reflash the blocks listed above, enter 'y'.\n"
-			"\tf : to reflash the whole ROM, enter 'f'\n"
+	printf("\n\ty : To reflash the blocks listed above, enter 'y'\n"
+			"\tf : to reflash the whole ROM\n"
+			"\tp : to do a dry run (practice mode) without modifying ROM contents\n"
 			"\tn : To abort/cancel, enter 'n'\n");
 
 	char *inp = basic_get_input("> ");
+	bool practice = 1;
 	switch (inp[0]) {
 	case 'y':
 		printf("reflashing selected blocks.\n");
+		practice = 0;
+		break;
+	case 'p':
+		printf("reflashing selected blocks (dry run). Note, some (harmless) write verification errors WILL\n"
+				"occur if there are \"modified blocks\" ! (i.e. ROM file != ECU ROM)\n");
+		practice = 1;
 		break;
 	case 'f':
 		/* set all blockflags as modified */
@@ -1672,6 +1680,7 @@ int cmd_flrom(int argc, char **argv) {
 			block_modified[blockno] = 1;
 		}
 		printf("reflashing ALL blocks.\n");
+		practice = 0;
 		break;
 	default:
 		printf("Aborting.\n");
@@ -1679,6 +1688,18 @@ int cmd_flrom(int argc, char **argv) {
 		break;
 	}
 
+	for (blockno = 0; blockno < fdt->numblocks; blockno++) {
+		u32 bstart;
+		if (!block_modified[blockno]) continue;
+
+		bstart = fdt->fblocks[blockno].start;
+		printf("\tBlock %02u\n", blockno);
+		if (reflash_block(&newdata[bstart], fdt, blockno, practice)) {
+			goto badexit;
+		}
+	}
+
+	printf("Reflash complete.\n");
 
 goodexit:
 	free(block_modified);
