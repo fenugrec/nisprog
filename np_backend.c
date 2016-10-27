@@ -800,6 +800,7 @@ uint8_t *load_rom(const char *fname, uint32_t expect_size) {
 	uint8_t *buf;
 
 	if (!fname) return NULL;
+	if (!expect_size) return NULL;
 
 	if ((fpl = fopen(fname, "rb"))==NULL) {
 		printf("Cannot open %s !\n", fname);
@@ -807,11 +808,6 @@ uint8_t *load_rom(const char *fname, uint32_t expect_size) {
 	}
 
 	u32 file_len = flen(fpl);
-	if (!expect_size) {
-		//cheat
-		expect_size = file_len;
-	}
-
 	if (file_len != expect_size) {
 		printf("error : wrong file length 0x%06lX (wanted 0x%06lX)!\n",
 				(unsigned long) file_len, (unsigned long) expect_size);

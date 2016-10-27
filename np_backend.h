@@ -92,8 +92,6 @@ extern const struct flashdev_t flashdevices[];
 
 /** load ROM with expected size.
  *
- * @param expected_size : if 0, load new ROM anyway
- *
  * @return if success: new buffer to be free'd by caller
  */
 uint8_t *load_rom(const char *fname, uint32_t expect_size);
