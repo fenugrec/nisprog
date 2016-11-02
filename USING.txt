@@ -1,4 +1,6 @@
 I'm not going to write a nice manual for this.
+The core commands (set, debug, etc) are from freediag's code base;
+refer to its manual for more info : http://freediag.sourceforge.net/Scantool-Manual.html
 
 **** getting help inside nisprog
 In nisprog, you can do either
@@ -73,8 +75,8 @@ npconf p3 0
 
 runkernel D:\dev\nis_kernels\npkern\npkern.bin
 
-#dump command, uses regular fastdump or npkern fastdump if available
-dumpmem asdf.bin 0 255
+#dump command, uses regular fastdump or npkern fastdump if available. Syntax is "dumpmem <file> <start> <len>"
+dumpmem asdf.bin 0 256
 
 #find differences between ECU and specified file
 flverif patched_rom.bin
@@ -84,6 +86,11 @@ flverif patched_rom.bin
 
 #reflash !
 flrom whatever_rom.bin
+#nisprog will offer a few choices for reflashing; it can selectively reflash only the modified blocks.
+# i.e. a 7058 ROM is 1MB, but the 16 blocks are split non-uniformly.
+# ( they're called "erase blocks" in the ROM chapter of the datasheet )
+# for example block 15 (0x0F) starts at offset 0x000E0000 in the ROM, and is 128kB in length.
+
 
 #timing errors ? add some delays with "npconf" and try again.
 #Don't panic, and DO NOT POWER OFF THE ECU if you suspect there were write errors !
