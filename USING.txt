@@ -70,7 +70,7 @@ nc
 setdev 1
 
 #some extra parameters if you're having timing issues (frequent read timeouts etc)
-#try "npconf ?"
+#try "npconf ?" to see list
 npconf p3 0
 
 runkernel D:\dev\nis_kernels\npkern\npkern.bin
@@ -78,7 +78,7 @@ runkernel D:\dev\nis_kernels\npkern\npkern.bin
 #dump command, uses regular fastdump or npkern fastdump if available. Syntax is "dumpmem <file> <start> <len>"
 dumpmem asdf.bin 0 256
 
-#find differences between ECU and specified file
+#find differences between ECU contents and specified file
 flverif patched_rom.bin
 
 #don't really use this one (reflash single block).
@@ -101,3 +101,20 @@ stopkernel
 #and disconnect / quit
 npdisc
 quit
+
+
+#your laptop or nisprog crashed, or you quit before stopping the kernel ?
+#No problem. Restart nisprog;
+#do your usual
+set
+interface dumb
+port blablabla
+etc
+
+#with one difference : kernel is running comms at a different speed, so
+set speed 62500
+#connect should work pretty solid
+nc
+#and init the already-running kernel :
+initk
+#continue where you left off !
