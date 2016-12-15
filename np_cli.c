@@ -64,6 +64,7 @@ static int npkern_init(void);
 static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep);
 static int dump_fast(FILE *outf, const uint32_t start, uint32_t len);
 static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len);
+static int npk_RMBA(uint8_t *dest, uint32_t addr, uint32_t len);
 
 
 
@@ -983,8 +984,8 @@ int cmd_watch(int argc, char **argv) {
 		return CMD_USAGE;
 	}
 
-	if (npstate != NP_NORMALCONN) {
-		printf("mem watch needs an active normal connection\n");
+	if (npstate == NP_DISC) {
+		printf("Please connect first (\"nc\")\n");
 		return CMD_FAILED;
 	}
 
@@ -993,11 +994,19 @@ int cmd_watch(int argc, char **argv) {
 	(void) diag_os_ipending();	//must be done outside the loop first
 	while ( !diag_os_ipending()) {
 
-		len = read_ac(wbuf, addr, 4);
-		if (len != 4) {
-			printf("? got %u bytes\n", len);
-			break;
+		if (npstate == NP_NORMALCONN) {
+			len = read_ac(wbuf, addr, 4);
+			if (len != 4) {
+				printf("? got %u bytes\n", len);
+				return CMD_FAILED;
+			}
+		} else if (npstate == NP_NPKCONN) {
+			if (npk_RMBA(wbuf, addr, 4)) {
+				printf("RMBA problem\n");
+				return CMD_FAILED;
+			}
 		}
+
 		printf("\r0x%0X: %02X %02X %02X %02X", addr, wbuf[0], wbuf[1], wbuf[2], wbuf[3]);
 		fflush(stdout);
 	}
