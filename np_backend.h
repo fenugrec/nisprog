@@ -114,4 +114,10 @@ int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struc
  */
 int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned blockno, bool practice);
 
+
+/** set eeprom eep_read() function address
+ * return 0 if ok
+ */
+int set_eepr_addr(uint32_t addr);
+
 #endif

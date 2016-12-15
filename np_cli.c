@@ -46,9 +46,11 @@ struct nparam_t {
 
 static struct nparam_t nparam_p3 = {.val = 5, .shortname = "p3", .descr = "P3 time before new request (ms)"};
 static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Read timeout offset. Adjust to eliminiate timeout errors"};
+static struct nparam_t nparam_eepr = {.val = 0, .shortname = "eepr", .descr = "eeprom_read() function address"};
 static struct nparam_t *nparams[] = {
 	&nparam_p3,
 	&nparam_rxe,
+	&nparam_eepr,
 	NULL
 };
 
@@ -110,7 +112,7 @@ int cmd_npconf(int argc, char **argv) {
 	}
 	npt->val = htoi(argv[2]);
 	update_params();
-	printf("\t%s set to %d.\n", argv[1], npt->val);
+	printf("\t%s set to %d (0x%X).\n", argv[1], npt->val, (unsigned) npt->val);
 	return CMD_OK;
 }
 
@@ -133,6 +135,14 @@ int cmd_dumpmem(int argc, char **argv) {
 	if (argc == 5) {
 		if (strcmp("eep", argv[4]) == 0) {
 			eep = 1;
+			if (!nparam_eepr.val) {
+				printf("Must set eeprom read function address first ! See \"npconf ?\"\n");
+				return CMD_FAILED;
+			}
+			if (set_eepr_addr((u32) nparam_eepr.val)) {
+				printf("could not set eep_read() address!\n");
+				return CMD_FAILED;
+			}
 		} else {
 			printf("did not recognize \"%s\"\n", argv[4]);
 			return CMD_FAILED;
