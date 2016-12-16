@@ -123,10 +123,14 @@ badexit:
 
 const struct cmd_tbl_entry np_cmdtable[]=
 {
-	{ "nc", "nc", "Connect to ECU with current parameters",
+	{ "npconn", "npconn", "Connect to ECU with current parameters",
 			cmd_npconn, 0, NULL},
+	{ "nc", "nc", "Connect to ECU with current parameters",
+			cmd_npconn, FLAG_HIDDEN, NULL},
 	{ "npdisc", "npdisc", "Disconnect from ECU (does not reset the ECU if running a kernel)",
 			cmd_npdisc, 0, NULL},
+	{ "nd", "nd", "Disconnect from ECU (does not reset the ECU if running a kernel)",
+			cmd_npdisc, FLAG_HIDDEN, NULL},
 	{ "npconf", "npconf <paramname> <value>", "Set some extra parameters",
 			cmd_npconf, 0, NULL},
 	{ "setdev", "setdev <device_no>", "Set mcu type",
@@ -146,7 +150,7 @@ const struct cmd_tbl_entry np_cmdtable[]=
 							"\t\"eep\" is added at the end.\n"
 							"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
 			cmd_dumpmem, 0, NULL},
-	{ "dm", "dm <file> <start> <#_of_bytes> [eep]", "dump memory from ROM/RAM/EEPROM",
+	{ "dm", "dm <file> <start> <#_of_bytes> [eep]", "(see \"dumpmem\")dump memory from ROM/RAM/EEPROM",
 			cmd_dumpmem, FLAG_HIDDEN, NULL},
 	{ "flverif", "flverif <file>", "Compare <file> against ROM",
 			cmd_flverif, 0, NULL},
