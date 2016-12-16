@@ -193,7 +193,7 @@ int sid27_unlock(int keyalg, uint32_t scode) {
 		diag_freemsg(rxmsg);
 		return -1;
 	}
-	printf("Trying SID 27, got seed: ");
+	printf("SID 27: seed = ");
 	diag_data_dump(stdout, &rxmsg->data[2], 4);
 
 	txdata[0]=0x27;
@@ -201,7 +201,7 @@ int sid27_unlock(int keyalg, uint32_t scode) {
 	switch (keyalg) {
 	case 1:
 		genkey1(&rxmsg->data[2], scode, &txdata[2]);	//write key to txdata buffer
-		printf("; using NPT_DDL algo (scode=0x%0X), ", scode);
+		printf("; using NPT_DDL algo (scode=0x%08X), ", scode);
 		break;
 	case 2:
 	default:
@@ -211,8 +211,6 @@ int sid27_unlock(int keyalg, uint32_t scode) {
 	}
 	diag_freemsg(rxmsg);
 
-	printf("to send key ");
-	diag_data_dump(stdout, &txdata[2], 4);
 	printf("\n");
 
 	nisreq.len=6; //27 02 K K K K

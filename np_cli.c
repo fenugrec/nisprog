@@ -45,7 +45,7 @@ struct nparam_t {
 
 
 static struct nparam_t nparam_p3 = {.val = 5, .shortname = "p3", .descr = "P3 time before new request (ms)"};
-static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Read timeout offset. Adjust to eliminiate timeout errors"};
+static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Read timeout offset. Adjust to eliminate timeout errors"};
 static struct nparam_t nparam_eepr = {.val = 0, .shortname = "eepr", .descr = "eeprom_read() function address"};
 static struct nparam_t *nparams[] = {
 	&nparam_p3,
@@ -1096,7 +1096,7 @@ int cmd_runkernel(int argc, char **argv) {
 	if (file_len != pl_len) {
 		printf("Using %u byte payload, padding with garbage to %u (0x0%X) bytes.\n", file_len, pl_len, pl_len);
 	} else {
-		printf("Using %u (0x0%X) byte payload", file_len, file_len);
+		printf("Using %u (0x0%X) byte payload.\n", file_len, file_len);
 	}
 
 	/* re-use NP 7 to get the SID27 done */
