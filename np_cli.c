@@ -1681,7 +1681,7 @@ int cmd_flrom(int argc, char **argv) {
 			"\tp : to do a dry run (practice mode) without modifying ROM contents\n"
 			"\tn : To abort/cancel, enter 'n'\n");
 
-	char *inp = basic_get_input("> ");
+	char *inp = basic_get_input("> ", stdin);
 	bool practice = 1;
 	switch (inp[0]) {
 	case 'y':
