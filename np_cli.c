@@ -1361,8 +1361,8 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 		if (!chrono) chrono += 1;
 		curspeed = 1000 * len_done / chrono;	//avg B/s
 		if (!curspeed) curspeed += 1;
-		tleft = willget / curspeed;	//s
-		printf("\rnpk dump @ 0x%08X, %5u B/s, %5u s remaining", iter_addr, curspeed, tleft);
+		tleft = (willget / curspeed) % 9999;	//s
+		printf("\rnpk dump @ 0x%08X, %5u B/s, %4u s remaining\t", iter_addr, curspeed, tleft);
 
 		numblocks = willget / 32;
 
