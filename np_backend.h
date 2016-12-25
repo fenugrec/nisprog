@@ -120,4 +120,11 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
  */
 int set_eepr_addr(uint32_t addr);
 
+/** Decode negative response code into a short error string.
+ *
+ * rxdata[] must contain at least 3 bytes, "7F <SID> <NRC>"
+ * returns a static char * that must not be free'd !
+ */
+const char *decode_nrc(uint8_t *rxdata);
+
 #endif

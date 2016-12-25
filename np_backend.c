@@ -21,7 +21,8 @@
 #include "diag_l2.h"
 #include "diag_os.h"
 #include "diag_tty.h"	//for setspeed
-#include "diag_l2_iso14230.h" 	//needed to force header type (nisprog)
+#include "diag_l2_iso14230.h" 	//needed to force header type
+#include "diag_iso14230.h"	//for NRC decoding
 
 #include "nisprog.h"
 #include "np_backend.h"
@@ -188,8 +189,12 @@ int sid27_unlock(int keyalg, uint32_t scode) {
 		return -1;
 	if ((rxmsg->len < 6) || (rxmsg->data[0] != 0x67)) {
 		printf("got bad 27 01 response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
+		if (rxmsg->data[0] == 0x7F) {
+			printf("%s\n", decode_nrc(rxmsg->data));
+		} else {
+			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+			printf("\n");
+		}
 		diag_freemsg(rxmsg);
 		return -1;
 	}
@@ -219,8 +224,12 @@ int sid27_unlock(int keyalg, uint32_t scode) {
 		return -1;
 	if (rxmsg->data[0] != 0x67) {
 		printf("got bad 27 02 response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
+		if (rxmsg->data[0] == 0x7F) {
+			printf("%s\n", decode_nrc(rxmsg->data));
+		} else {
+			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+			printf("\n");
+		}
 		diag_freemsg(rxmsg);
 		return -1;
 	}
@@ -316,8 +325,12 @@ int sid36(uint8_t *buf, uint32_t len) {
 		}
 		if (rxbuf[1] != 0x76) {
 			printf("got bad 36 response : ");
-			diag_data_dump(stdout, rxbuf, errval);
-			printf("\n");
+			if (rxbuf[1] == 0x7F) {
+				printf("%s\n", decode_nrc(&rxbuf[1]));
+			} else {
+				diag_data_dump(stdout, rxbuf, errval);
+				printf("\n");
+			}
 			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 			return -1;
 		}
@@ -352,8 +365,12 @@ int sid37(uint16_t cks) {
 
 	if (rxmsg->data[0] != 0x77) {
 		printf("got bad 37 response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
+		if (rxmsg->data[0] == 0x7F) {
+			printf("%s\n", decode_nrc(rxmsg->data));
+		} else {
+			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+			printf("\n");
+		}
 		diag_freemsg(rxmsg);
 		return -1;
 	}
@@ -865,4 +882,41 @@ int set_eepr_addr(uint32_t addr) {
 
 	diag_freemsg(rxmsg);
 	return 0;
+}
+
+#define NRC_STRLEN 80	//too small and we get an assert() failure in smartcat() !!!
+const char *decode_nrc(uint8_t *rxdata) {
+	struct diag_msg tmsg;
+	static char descr[NRC_STRLEN]="";
+
+	u8 nrc = rxdata[2];
+
+	//XXX TODO : move this to nislib common defs someday
+	//XXX TODO : determine which of these is SID dependant
+#define C2_NRC_BAD_SID36_SEQ 0x90
+#define C2_NRC_BAD_SID37_CKS 0x91
+#define C2_NRC_LOWSYSV 0x92
+//??? 0x93 //SID 27
+//#define C2_NRC_ENGRUN 0x94 //SID 27, not sure - engine running ?
+//??? 0x95 //SID 27SID 27
+
+	switch (nrc) {
+	case C2_NRC_BAD_SID36_SEQ:
+		return "Bad SID 36 block sequence / length";
+		break;
+	case C2_NRC_BAD_SID37_CKS:
+		return "Bad SID 36/37 payload checksum";
+		break;
+	case C2_NRC_LOWSYSV:
+		return "Low battery voltage";
+		break;
+	default:
+		//Try Standard ISO14230 NRC
+		tmsg.data = rxdata;
+		tmsg.len = 3;	//assume rxdata contains a "7F <SID> <NRC>" message
+		(void) diag_l3_iso14230_decode_response(&tmsg, descr, NRC_STRLEN);
+		return descr;
+		break;
+	}
+	return descr;
 }
