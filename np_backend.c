@@ -679,7 +679,7 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 
 		/* expect exactly 3 bytes, but with generous timeout */
 		//rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 300);
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 800);
 		if (errval <= 1) {
 			printf("\n\tProblem: no response @ %X\n", (unsigned) start);
 			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
