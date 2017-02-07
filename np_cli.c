@@ -37,20 +37,29 @@
 
 
 /** simpler parameter unit than diag_cfgi */
+typedef long nparam_val;
 struct nparam_t {
-	int val;
+	long val;
 	const char *shortname;
 	const char *descr;
+	long min;
+	long max;	//validation : (val >= min) && (val <= max)
 };
 
 
-static struct nparam_t nparam_p3 = {.val = 5, .shortname = "p3", .descr = "P3 time before new request (ms)"};
-static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Read timeout offset. Adjust to eliminate timeout errors"};
-static struct nparam_t nparam_eepr = {.val = 0, .shortname = "eepr", .descr = "eeprom_read() function address"};
+static struct nparam_t nparam_p3 = {.val = 5, .shortname = "p3", .descr = "P3 time before new request (ms)",
+									.min = 0, .max = 500};
+static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Read timeout offset. Adjust to eliminate timeout errors",
+									.min = -20, .max = 500};
+static struct nparam_t nparam_eepr = {.val = 0, .shortname = "eepr", .descr = "eeprom_read() function address",
+									.min = 0, .max = 2048L * 1024};
+static struct nparam_t nparam_kspeed = {.val = NPK_SPEED, .shortname = "kspeed", .descr = "kernel comms speed. Run \"initk\" after changing",
+									.min = 100, .max = 250000};
 static struct nparam_t *nparams[] = {
 	&nparam_p3,
 	&nparam_rxe,
 	&nparam_eepr,
+	&nparam_kspeed,
 	NULL
 };
 
@@ -68,10 +77,13 @@ static int npk_RMBA(uint8_t *dest, uint32_t addr, uint32_t len);
 
 
 
-/* called every time a parameter is changed from the UI */
+/* called every time a parameter is changed from the UI.
+ * For some params, the value is only used in certain places,
+ * and therefore doesn't need to be handled in here
+ */
 static void update_params(void) {
 	if (global_l2_conn) {
-		global_l2_conn->diag_l2_p3min = nparam_p3.val;
+		global_l2_conn->diag_l2_p3min = (u16) nparam_p3.val;
 		global_l2_conn->diag_l2_p4min=0;
 	}
 	return;
@@ -81,14 +93,15 @@ static void update_params(void) {
 */
 int cmd_npconf(int argc, char **argv) {
 	struct nparam_t *npt;
+	nparam_val tempval;
 	bool found = 0;
 	bool helping = 0;
+
+	if ((argc <= 1) || (argc > 3)) return CMD_USAGE;
 
 	if (argv[1][0] == '?') {
 		helping = 1;
 		printf("param\tvalue\tdescription\n");
-	} else if (argc != 3) {
-		return CMD_USAGE;
 	}
 
 	// find param name in list
@@ -96,7 +109,7 @@ int cmd_npconf(int argc, char **argv) {
 	for (i = 0; nparams[i]; i++) {
 		npt = nparams[i];
 		if (helping) {
-			printf("%s\t%d\t%s\n", npt->shortname, npt->val, npt->descr);
+			printf("%s\t%ld\t%s\n", npt->shortname, npt->val, npt->descr);
 			continue;
 		}
 		if (strcmp(npt->shortname, argv[1]) == 0) {
@@ -111,9 +124,24 @@ int cmd_npconf(int argc, char **argv) {
 		printf("Unknown param \"%s\"\n", argv[1]);
 		return CMD_FAILED;
 	}
-	npt->val = htoi(argv[2]);
+
+	if (argc == 2) {
+		//no new value : just print current setting
+		printf("%s is currently %ld (0x%lX)\n", npt->shortname,
+				npt->val, npt->val);
+		return CMD_OK;
+	}
+
+	tempval = htoi(argv[2]);
+
+	if ((tempval < npt->min) || (tempval > npt->max)) {
+		printf("Error, requested value (%ld / 0x%lX) out of bounds !\n",
+				(long) tempval, (long) tempval);
+		return CMD_FAILED;
+	}
+	npt->val = tempval;
 	update_params();
-	printf("\t%s set to %d (0x%X).\n", argv[1], npt->val, (unsigned) npt->val);
+	printf("\t%s set to %ld (0x%lX).\n", argv[1], npt->val, npt->val);
 	return CMD_OK;
 }
 
@@ -678,7 +706,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			// We should find 0xEC if it's in there no matter what kind of header.
 			// We'll "purge" the next bytes when we send SID 21
 			errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-					NULL, hackbuf, 4, 25 + nparam_rxe.val);
+					NULL, hackbuf, 4, (unsigned) (25 + nparam_rxe.val));
 			if (errval == 4) {
 				//try to find 0xEC in the first bytes:
 				for (i=0; i<=3 && i<errval; i++) {
@@ -728,7 +756,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			//By requesting (extra) + 4 with a short timeout, we'll return
 			//here very quickly and we're certain to "catch" 0x61.
 			errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-					NULL, hackbuf, extra + 4, 25 + nparam_rxe.val);
+					NULL, hackbuf, extra + 4, (unsigned) (25 + nparam_rxe.val));
 			if (errval != extra+4) {
 				retryscore -=25;
 				diag_os_millisleep(300);
@@ -756,7 +784,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 				extra=0;
 			} else {
 				errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-					NULL, &hackbuf[errval], extra, 25 + nparam_rxe.val);
+					NULL, &hackbuf[errval], extra, (unsigned) (25 + nparam_rxe.val));
 			}
 
 			if (errval != extra)	//this should always fit...
@@ -1141,7 +1169,7 @@ int cmd_runkernel(int argc, char **argv) {
 	printf("SID BF done.\nECU now running from RAM ! Disabling periodic keepalive;\n");
 
 	if (!npkern_init()) {
-		printf("You may proceed with kernel-specific commands; speed has been changed to %u.\n", NPK_SPEED);
+		printf("You may proceed with kernel-specific commands.\n");
 		npstate = NP_NPKCONN;
 	} else {
 		printf("Problem starting kernel; try to disconnect + set speed + connect again.\n");
@@ -1173,7 +1201,7 @@ static int npkern_init(void) {
 	/* Assume kernel is freshly booted : disable keepalive and setspeed */
 	global_l2_conn->tinterval = -1;
 
-	set.speed = NPK_SPEED;
+	set.speed = (unsigned) nparam_kspeed.val;
 	set.databits = diag_databits_8;
 	set.stopbits = diag_stopbits_1;
 	set.parflag = diag_par_n;
@@ -1283,7 +1311,8 @@ static int npk_rxrawdump(uint8_t *dest, uint32_t skip_start, uint32_t numblocks)
 		//loop for every 32-byte response
 
 		/* grab header. Assumes we only get "FMT PRC <data> cks" replies */
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3 + 32, 25 + nparam_rxe.val);
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL,
+								rxbuf, 3 + 32, (unsigned) (25 + nparam_rxe.val));
 		if (errval < 0) {
 			printf("dl1recv err\n");
 			goto badexit;
