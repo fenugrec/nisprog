@@ -1612,11 +1612,15 @@ int cmd_flverif(int argc, char **argv) {
 	}
 
 	printf("Different blocks : ");
+	unsigned bcnt = 0;
 	unsigned blockno;
 	for (blockno = 0; blockno < fdt->numblocks; blockno++) {
-		if (block_modified[blockno]) printf("%u, ", blockno);
+		if (block_modified[blockno]) {
+			printf("%u, ", blockno);
+			bcnt += 1;
+		}
 	}
-	printf("\n");
+	printf("(total: %u)\n", bcnt);
 	return CMD_OK;
 
 badexit:
@@ -1671,10 +1675,15 @@ int cmd_flrom(int argc, char **argv) {
 	}
 
 	printf("Modified blocks : ");
+	unsigned bcnt = 0;
 	unsigned blockno;
 	for (blockno = 0; blockno < fdt->numblocks; blockno++) {
-		if (block_modified[blockno]) printf("%u, ", blockno);
+		if (block_modified[blockno]) {
+			printf("%u, ", blockno);
+			bcnt += 1;
+		}
 	}
+	printf("(total: %u)\n", bcnt);
 
 	printf("\n\ty : To reflash the blocks listed above, enter 'y'\n"
 			"\tf : to reflash the whole ROM\n"
@@ -1690,7 +1699,7 @@ int cmd_flrom(int argc, char **argv) {
 		break;
 	case 'p':
 		printf("reflashing selected blocks (dry run). Note, some (harmless) write verification errors WILL\n"
-				"occur if there are \"modified blocks\" ! (i.e. ROM file != ECU ROM)\n");
+				"occur if there are \"modified blocks\" ! (i.e. ROM file differs from ECU ROM)\n");
 		practice = 1;
 		break;
 	case 'f':
