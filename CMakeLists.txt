@@ -26,9 +26,12 @@ include (ExternalProject)
 set (PKGVERSIONMAJOR "1")
 set (PKGVERSIONMINOR "01")
 set (PKGVERSION "${PKGVERSIONMAJOR}.${PKGVERSIONMINOR}")
-set (SCANTOOL_PROGNAME "nisprog")
+set (NP_PROGNAME "nisprog")
 #that sets the command-line tool prompt.
 
+
+###### fill metadata file
+configure_file (np_conf.h.in np_conf.h)
 
 ###### Compiler flags & build types
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
@@ -81,6 +84,7 @@ set (NISPROG_SRCS nisprog.c np_cli.c np_backend.c
 add_executable(nisprog ${NISPROG_SRCS})
 
 target_include_directories(nisprog PUBLIC freediag/scantool)
+target_include_directories(nisprog PUBLIC ${PROJECT_BINARY_DIR})
 target_include_directories(nisprog PUBLIC ${PROJECT_BINARY_DIR}/external)
 
 target_link_libraries(nisprog diag freediagcli)

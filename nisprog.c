@@ -24,13 +24,10 @@
 #include "scantool_cli.h"
 
 #include "nisprog.h"
+#include "np_conf.h"
 
 FILE *dbg_stream=NULL;	//for nislib
 enum npstate_t npstate;
-
-
-#define NP_PROGNAME "nisprog"
-#define NP_VERSION "1.01"	//TODO !!!
 
 const struct cmd_tbl_entry np_cmdtable[];
 
