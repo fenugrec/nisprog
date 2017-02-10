@@ -884,6 +884,72 @@ int set_eepr_addr(uint32_t addr) {
 	return 0;
 }
 
+
+//TODO : merge these into npkern defs ?
+#define KSPEED_FROM_BRR(x) ((20 * 1000 * 1000UL) / (32 * ((x) + 1)))
+#define BRR_FROM_KSPEED(x) (((20 * 1000 * 1000UL) / (32 * (x))) - 1)
+
+int set_kernel_speed(uint16_t kspeed) {
+	struct diag_msg nisreq={0};	//request to send
+	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[8];	//data for nisreq
+
+	int errval;
+	unsigned newdiv;
+	float pct_error;
+
+	if (npstate != NP_NPKCONN) {
+		printf("kernel not initialized - try \"runkernel\" or \"initk\"\n");
+	}
+
+	if (kspeed < KSPEED_FROM_BRR(0xFF)) {
+		printf("kspeed value out of bounds !\n");
+		return -1;
+	}
+
+	newdiv = BRR_FROM_KSPEED(kspeed);
+
+	/* because of rounding, check this too */
+	if ((newdiv == 0) || (newdiv > 0xFF)) {
+		printf("Illegal BRR value for kspeed %u !\n", kspeed);
+		return -1;
+	}
+
+	pct_error = 100.0 * (KSPEED_FROM_BRR(newdiv) - kspeed) / kspeed;
+	/* faster kernel speeds are more of a problem since its answer come in too fast
+	 * for the PC */
+	if ((pct_error >= 2) || (pct_error <= -4)) {
+		printf("BRR is %.1f%% away from requested value; aborting\n", pct_error);
+		return -1;
+	}
+
+	nisreq.data=txdata;	//super very essential !
+
+    //#define SID_CONF_SETSPEED 0x01	/* set comm speed (BRR divisor reg) : <SID_CONF> <SID_CONF_SETSPEED> <new divisor> */
+	txdata[0] = 0xBE;
+	txdata[1] = 0x01;
+	txdata[2] = newdiv & 0xff;
+	nisreq.len=3;
+
+	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
+	if (rxmsg==NULL)
+		return -1;
+	if (rxmsg->data[0] != 0xFE) {
+		printf("got bad BE response : ");
+		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+		printf("\n");
+		diag_freemsg(rxmsg);
+		return -1;
+	}
+
+	//TODO : remove this when npkern doesn't require 25ms of "quiet time" any more
+	diag_os_millisleep(25);
+	diag_freemsg(rxmsg);
+	return 0;
+
+}
+
+
 #define NRC_STRLEN 80	//too small and we get an assert() failure in smartcat() !!!
 const char *decode_nrc(uint8_t *rxdata) {
 	struct diag_msg tmsg;

@@ -120,6 +120,11 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
  */
 int set_eepr_addr(uint32_t addr);
 
+/** set kernel comms speed. Caller must then re-send StartComms
+ * ret 0 if ok
+ */
+int set_kernel_speed(uint16_t kspeed);
+
 /** Decode negative response code into a short error string.
  *
  * rxdata[] must contain at least 3 bytes, "7F <SID> <NRC>"

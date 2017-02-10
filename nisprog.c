@@ -138,6 +138,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 	{ "setkeys", "setkeys <sid27_key> [<sid36_key>]", "Set ECU keys. Specifying the SID 36 key is optional if the SID 27 key is a known keyset.\n"
 													"Please consider submitting new keys to be added to the list !\n",
 			cmd_setkeys, 0, NULL},
+	{ "kspeed", "kspeed <new_speed>", "Change kernel comms speed and reinitialize kernel; Recommended <new_speed> values: 62500, 31250, 25000.",
+			cmd_kspeed, 0, NULL},
 	{ "runkernel", "runkernel <file>", "Send + run specified kernel",
 			cmd_runkernel, 0, NULL},
 	{ "stopkernel", "stopkernel", "Disconnects + resets the ECU to exit kernel",

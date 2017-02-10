@@ -36,8 +36,9 @@
 #define NPK_SPEED 62500	//bps default speed for npkern kernel
 
 
+typedef long nparam_val;	//type of .val member
+
 /** simpler parameter unit than diag_cfgi */
-typedef long nparam_val;
 struct nparam_t {
 	long val;
 	const char *shortname;
@@ -53,8 +54,8 @@ static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Re
 									.min = -20, .max = 500};
 static struct nparam_t nparam_eepr = {.val = 0, .shortname = "eepr", .descr = "eeprom_read() function address",
 									.min = 0, .max = 2048L * 1024};
-static struct nparam_t nparam_kspeed = {.val = NPK_SPEED, .shortname = "kspeed", .descr = "kernel comms speed. Run \"initk\" after changing",
-									.min = 100, .max = 250000};
+static struct nparam_t nparam_kspeed = {.val = NPK_SPEED, .shortname = "kspeed", .descr = "kernel comms speed used by \"initk\" command",
+									.min = 100, .max = 65000};
 static struct nparam_t *nparams[] = {
 	&nparam_p3,
 	&nparam_rxe,
@@ -1605,6 +1606,43 @@ int cmd_npt(int argc, char **argv) {
 
 	return CMD_OK;
 }
+
+
+/* kspeed <new_speed> */
+int cmd_kspeed(int argc, char **argv) {
+
+	if (argc != 2) {
+		return CMD_USAGE;
+	}
+
+	if (npstate != NP_NPKCONN) {
+		printf("kernel not initialized - try \"runkernel\" or \"initk\"\n");
+		return CMD_FAILED;
+	}
+
+	u16 newspeed = htoi(argv[1]);
+
+	if (set_kernel_speed(newspeed)) {
+		npkern_init();
+		printf("Kernel did not accept new speed %ubps, try another speed or \"initk\"\n",
+				(unsigned) newspeed);
+		return CMD_FAILED;
+	}
+
+	//the kernel has changed speed; now use npkern_init to update the serial port
+	nparam_kspeed.val = (nparam_val) newspeed;
+
+	if (npkern_init()) {
+		printf("Failed to re-initialize kernel at new speed %ubps, try another speed or \"initk\"\n",
+				(unsigned) newspeed);
+		diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
+		return CMD_FAILED;
+	}
+	printf("Kernel now using %ubps.\n", (unsigned) newspeed);
+
+	return CMD_OK;
+}
+
 
 
 /* flverif <file> */
