@@ -1,4 +1,9 @@
-I'm not going to write a nice manual for this.
+If you're having trouble reading this file or "nisprog.ini" (no newlines, etc) :
+open with another text editor (wordpad or whatever; notepad can't deal with this usually)
+
+I'm not going to write a nice manual for this, sorry.
+If you don't pay attention you can brick your ECU !
+
 The core commands (set, debug, etc) are from freediag's code base;
 refer to its manual for more info : http://freediag.sourceforge.net/Scantool-Manual.html
 
@@ -6,20 +11,23 @@ refer to its manual for more info : http://freediag.sourceforge.net/Scantool-Man
 In nisprog, you can do either
 "help <whatever_command>"
 or
-"commandname ?" to get descriptions and help etc. I think the rest should be pretty self-explanatory.
+"commandname ?" to get descriptions and help etc. I think most of it should be pretty self-explanatory.
 
 **** command availability vs npkern
 The main idea is that some commands only work if the ECU is running npkern (see github.com/fenugrec/npkern ) :
 		flverif
 		flblock
 		flrom
-OTOH, "dumpmem" works always, but is way way faster with npkern running.
+OTOH, "dumpmem" always works, but is way way faster with npkern running.
 
 For that, you'll need an npkern kernel (compiled of course, maybe npkern_7058.bin ). See "runkernel" command
 
 **** If you get in trouble (weird errors, etc)
-"debug l1 0x8c" will show sent/received data.
-try adjusting timing, etc.
+"debug l1 0x8c" will start showing all sent/received data which helps for tracking issues.
+Just do "debug l1 0" to silence the extra output.
+
+try adjusting timing, etc. (see parameters for "npconf" command)
+
 If you want me to help, I'll need
 		full console output (previous commands, all errors etc)
 		nisprog version
@@ -60,7 +68,7 @@ destaddr 0x10
 addrtype phys
 up
 
-#connect : don't use "diag connect" anymore
+#connect to ECU
 nc
 
 #optional, if your ECUID needs special keys (let me know if this happens !)
@@ -70,19 +78,25 @@ nc
 setdev 1
 
 #some extra parameters if you're having timing issues (frequent read timeouts etc)
-#try "npconf ?" to see list
+#try "npconf ?" to see list.
+#Setting P3 to 0 usually works well and makes comms faster.
 npconf p3 0
 
+#if you're having read/write errors and playing with some npconf parameters doesn't help:
+#try changing the kernel comms speed. By default this is 62500bps.
+kspeed 31250
+
+#Run Kernel. Note, spaces in filenames will not work !
 runkernel D:\dev\nis_kernels\npkern\npkern.bin
 
 #dump command, uses regular fastdump or npkern fastdump if available. Syntax is "dumpmem <file> <start> <len>"
 dumpmem asdf.bin 0 256
+#shorthand , same thing:
+dm asdf.bin 0 256
 
-#find differences between ECU contents and specified file
+#find differences between ECU contents and specified file.
 flverif patched_rom.bin
 
-#don't really use this one (reflash single block).
-#flblock orig_rom.bin 14
 
 #reflash !
 flrom whatever_rom.bin
@@ -91,11 +105,13 @@ flrom whatever_rom.bin
 # ( they're called "erase blocks" in the ROM chapter of the datasheet )
 # for example block 15 (0x0F) starts at offset 0x000E0000 in the ROM, and is 128kB in length.
 
+# It is normal for a flrom "dry run" to report verification errors, since it does NOT modify the ECU.
 
 #timing errors ? add some delays with "npconf" and try again.
-#Don't panic, and DO NOT POWER OFF THE ECU if you suspect there were write errors !
+#Don't panic, and DO NOT POWER OFF THE ECU if you suspect there were flash errors !
 
-#all done ? are you sure ? then reset the ECU to leave kernel mode
+#all done ? are you sure ? then reset the ECU to leave kernel mode. Note, this has the same effect
+#as power cycling the ECU / cutting all power to it, so DTCs and self-learn values are lost, etc.
 stopkernel
 
 #and disconnect / quit
@@ -115,6 +131,8 @@ etc
 set speed 62500
 #connect should work pretty solid
 nc
-#and init the already-running kernel :
-initk
+#and set kernel speed + init the already-running kernel :
+kspeed 62500
+#initk (optional)
+
 #continue where you left off !
