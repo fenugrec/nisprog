@@ -30,7 +30,7 @@ enum npstate_t npstate;
 
 
 #define NP_PROGNAME "nisprog"
-#define NP_VERSION "1.00"	//TODO !!!
+#define NP_VERSION "1.01"	//TODO !!!
 
 const struct cmd_tbl_entry np_cmdtable[];
 

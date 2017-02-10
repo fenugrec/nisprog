@@ -24,7 +24,7 @@ include (CheckTypeSize)
 include (ExternalProject)
 
 set (PKGVERSIONMAJOR "1")
-set (PKGVERSIONMINOR "00")
+set (PKGVERSIONMINOR "01")
 set (PKGVERSION "${PKGVERSIONMAJOR}.${PKGVERSIONMINOR}")
 set (SCANTOOL_PROGNAME "nisprog")
 #that sets the command-line tool prompt.
