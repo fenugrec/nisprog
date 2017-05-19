@@ -70,8 +70,23 @@ const struct flashblock fblocks_7055[] = {
 	{0x00070000,	0x00010000},
 };
 
+const struct flashblock fblocks_7051[] = {
+	{0x00000000,	0x00007FFF},
+	{0x00008000,	0x00007FFF},
+	{0x00010000,	0x00007FFF},
+	{0x00018000,	0x00007FFF},
+	{0x00020000,	0x00007FFF},
+	{0x00028000,	0x00007FFF},
+	{0x00030000,	0x00007FFF},
+	{0x00038000,	0x00006FFF},
+	{0x0003F000,	0x000003FF},
+	{0x0003F400,	0x000003FF},
+	{0x0003F800,	0x000003FF},
+	{0x0003FC00,	0x000003FF},
+};
 
 const struct flashdev_t flashdevices[] = {
+	{ "7051", 256 * 1024, 12, fblocks_7051 },
 	{ "7055", 512 * 1024, 16, fblocks_7055 },
 	{ "7058", 1024 * 1024, 16, fblocks_7058 },
 	{ NULL, 0, 0, NULL },

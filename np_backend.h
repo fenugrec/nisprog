@@ -81,7 +81,7 @@ struct flashdev_t {
 	const char *name;		// like "7058", for UI convenience only
 
 	const uint32_t romsize;		//in bytes
-	const unsigned numblocks;		//always 16?
+	const unsigned numblocks;
 	const struct flashblock *fblocks;
 };
 
