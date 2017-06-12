@@ -356,6 +356,10 @@ int cmd_npconn(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 
+	if (global_cfg.L2proto != DIAG_L2_PROT_ISO14230) {
+		printf("L2 protocol must be iso14230 to use Nissan commands ! try \"set l2protocol\"\n");
+		return CMD_FAILED;
+	}
 
 	/* Open interface using current L1 proto and hardware */
 	rv = diag_l2_open(dl0d, global_cfg.L1proto);
