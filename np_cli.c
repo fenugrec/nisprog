@@ -166,6 +166,10 @@ int cmd_dumpmem(int argc, char **argv) {
 	if (argc == 5) {
 		if (strcmp("eep", argv[4]) == 0) {
 			eep = 1;
+			if (npstate != NP_NPKCONN) {
+				printf("Kernel must be running for reading EEPROM. Try \"runkernel\" or \"initk\"\n");
+				return CMD_FAILED;
+			}
 			if (!nparam_eepr.val) {
 				printf("Must set eeprom read function address first ! See \"npconf ?\"\n");
 				return CMD_FAILED;
