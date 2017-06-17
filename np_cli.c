@@ -314,6 +314,8 @@ goodexit:
 
 
 int cmd_initk(int argc, char **argv) {
+	const char *npk_id;
+
 	(void) argv;
 	if (argc > 1) return CMD_USAGE;
 
@@ -329,6 +331,12 @@ int cmd_initk(int argc, char **argv) {
 	}
 
 	npstate = NP_NPKCONN;
+
+	npk_id = get_npk_id();
+	if (npk_id) {
+		printf("Connected to kernel: %s\n", npk_id);
+	}
+
 	return CMD_OK;
 }
 
@@ -1174,12 +1182,19 @@ int cmd_runkernel(int argc, char **argv) {
 
 	printf("SID BF done.\nECU now running from RAM ! Disabling periodic keepalive;\n");
 
-	if (!npkern_init()) {
-		printf("You may proceed with kernel-specific commands.\n");
-		npstate = NP_NPKCONN;
-	} else {
+	if (npkern_init()) {
 		printf("Problem starting kernel; try to disconnect + set speed + connect again.\n");
+		return CMD_FAILED;
 	}
+
+	const char *npk_id;
+	npk_id = get_npk_id();
+	if (npk_id) {
+		printf("Connected to kernel: %s\n", npk_id);
+	}
+
+	printf("You may now use kernel-specific commands.\n");
+	npstate = NP_NPKCONN;
 
 	return CMD_OK;
 

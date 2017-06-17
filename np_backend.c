@@ -865,10 +865,6 @@ int set_eepr_addr(uint32_t addr) {
 
 	int errval;
 
-	if (npstate != NP_NPKCONN) {
-		printf("kernel not initialized - try \"runkernel\" or \"initk\"\n");
-	}
-
 	nisreq.data=txdata;	//super very essential !
 
     /* set eeprom_read() function address <SID_CONF> <SID_CONF_SETEEPR> <AH> <AM> <AL> */
@@ -905,10 +901,6 @@ int set_kernel_speed(uint16_t kspeed) {
 	int errval;
 	unsigned newdiv;
 	float pct_error;
-
-	if (npstate != NP_NPKCONN) {
-		printf("kernel not initialized - try \"runkernel\" or \"initk\"\n");
-	}
 
 	if (kspeed < KSPEED_FROM_BRR(0xFF)) {
 		printf("kspeed value out of bounds !\n");
@@ -956,6 +948,40 @@ int set_kernel_speed(uint16_t kspeed) {
 	return 0;
 
 }
+
+const char *get_npk_id(void) {
+	struct diag_msg nisreq={0};	//request to send
+	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[64];	//data for nisreq
+	static char npk_id[256];	//version string
+	unsigned idlen;
+
+	int errval;
+
+	nisreq.data=txdata;
+
+	txdata[0]=SID_RECUID;
+	nisreq.len=1;
+	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
+	if (rxmsg==NULL)
+		return NULL;
+	if (rxmsg->data[0] != (SID_RECUID + 0x40)) {
+		printf("got bad 1A response : %s", decode_nrc(rxmsg->data));
+		diag_freemsg(rxmsg);
+		return NULL;
+	}
+
+	idlen = rxmsg->len;
+	if (idlen <= 1) return NULL;
+
+	memcpy(npk_id, rxmsg->data + 1, idlen - 1);	//skip 0x5A
+	npk_id[idlen]=0;	//null-terminate
+
+	diag_freemsg(rxmsg);
+	return npk_id;
+
+}
+
 
 
 static const struct {

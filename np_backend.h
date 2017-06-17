@@ -125,6 +125,13 @@ int set_eepr_addr(uint32_t addr);
  */
 int set_kernel_speed(uint16_t kspeed);
 
+
+/** Get npkern ID string
+ *
+ * caller must not free() the string !
+ */
+const char *get_npk_id(void);
+
 /** Decode negative response code into a short error string.
  *
  * rxdata[] must contain at least 3 bytes, "7F <SID> <NRC>"
