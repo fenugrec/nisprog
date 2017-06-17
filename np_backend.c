@@ -551,8 +551,8 @@ static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *
 			return -1;
 		}
 
-		//responses :	01 FC FD for good CRC
-		//				03 7F FC 77 <cks> for bad CRC
+		//responses :	01 <SID_CONF+0x40> <cks> for good CRC
+		//				03 7F <SID_CONF> <SID_CONF_CKS1_BADCKS> <cks> for bad CRC
 		// anything else is an error that causes abort
 		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 50);
 		if (errval != 3) {
@@ -563,7 +563,7 @@ static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *
 		if (rxbuf[1] == SID_CONF + 0x40) {
 			continue;
 		}
-		//so, it's a 03 7F FC xx <cks> response. Get remainder of packet
+		//so, it's a 03 7F <SID_CONF> <NRC> <cks> response. Get remainder of packet
 		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf+3, 2, 50);
 		if (errval != 2) {
 			printf("\nweirdness @ chunk %X\n", (unsigned) chunko);
@@ -711,14 +711,14 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 
 		if (rxbuf[1] != (SID_FLASH + 0x40)) {
 			//maybe negative response, if so, get the remaining packet
-			printf("\n\tProblem: bad response @ %X\n", (unsigned) start);
+			printf("\n\tProblem: bad response @ %X: ", (unsigned) start);
 
 			int needed = 1 + rxbuf[0] - errval;
 			if (needed > 0) {
 				errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, &rxbuf[errval], needed, 300);
 			}
 			if (errval < 0) errval = 0;	//floor
-			diag_data_dump(stdout, rxbuf, rxbuf[0] + errval);
+			printf("%s\n", decode_nrc(&rxbuf[1]));
 			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 			return -1;
 		}
@@ -761,9 +761,7 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 	if (rxmsg==NULL)
 		goto badexit;
 	if (rxmsg->data[0] != (SID_FLREQ + 0x40)) {
-		printf("got bad RequestDownload response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
+		printf("got bad RequestDownload response : %s\n", decode_nrc(rxmsg->data));
 		diag_freemsg(rxmsg);
 		goto badexit;
 	}
@@ -778,9 +776,7 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 		if (rxmsg==NULL)
 			goto badexit;
 		if (rxmsg->data[0] != (SID_FLASH + 0x40)) {
-			printf("got bad Unprotect response : ");
-			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-			printf("\n");
+			printf("got bad Unprotect response : %s\n", decode_nrc(rxmsg->data));
 			diag_freemsg(rxmsg);
 			goto badexit;
 		}
@@ -804,9 +800,7 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 		goto badexit;
 	}
 	if (rxmsg->data[0] != (SID_FLASH + 0x40)) {
-		printf("got bad ERASE_BLOCK response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
+		printf("got bad ERASE_BLOCK response : %s\n", decode_nrc(rxmsg->data));
 		diag_freemsg(rxmsg);
 		goto badexit;
 	}
@@ -889,9 +883,7 @@ int set_eepr_addr(uint32_t addr) {
 	if (rxmsg==NULL)
 		return -1;
 	if (rxmsg->data[0] != (SID_CONF + 0x40)) {
-		printf("got bad BE response : ");
-		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
-		printf("\n");
+		printf("got bad SID_CONF response : %s\n", decode_nrc(rxmsg->data));
 		diag_freemsg(rxmsg);
 		return -1;
 	}
@@ -966,10 +958,55 @@ int set_kernel_speed(uint16_t kspeed) {
 }
 
 
+static const struct {
+	const uint8_t id;
+	const char *response;
+} npkern_nrclist[] = {
+
+	{SID_CONF_CKS1_BADCKS, "Chunk CRC mismatch"},
+	{PF_SILICON, "Wrong kernel for silicon (180 / 350nm)"},
+	{PFEB_BADBLOCK, "bad block #"},
+	{PFEB_VERIFAIL, "erase verify failed"},
+	{PFWB_OOB, "dest out of bounds"},
+	{PFWB_MISALIGNED, "dest not on 128B boundary"},
+	{PFWB_LEN, "len not multiple of 128"},
+	{PFWB_VERIFAIL, "post-write verify failed"},
+	{PFWB_MAXRET, "350nm: max # of rewrite attempts"},
+	{PF_ERROR, "350nm: generic flashing error : FWE, etc"},
+	{SID34_BADFCCS, "180nm: bad FCCS"},
+	{SID34_BADRAMER, "180nm: bad RAMER"},
+	{SID34_BADDL_ERASE, "180nm: bad DL_ERASE"},
+	{SID34_BADDL_WRITE, "180nm: bad DL_WRITE"},
+	{SID34_BADINIT_ERASE, "180nm: bad INIT_ERASE"},
+	{SID34_BADINIT_WRITE, "180nm: bad INIT_WRITE"},
+	{0, ""}
+};
+
+/** Return string for npkern NRC
+ *
+ * specialized version of decode_nrc strictly for npkern error codes.
+ * Do not free() the returned string !
+ * @return NULL if not defined
+ */
+static const char *decode_nrc_npk(const uint8_t nrc) {
+	unsigned i;
+	for (i = 0; npkern_nrclist[i].id; i++) {
+		if (npkern_nrclist[i].id == nrc) {
+			return npkern_nrclist[i].response;
+		}
+	}
+	return NULL;
+}
+
 #define NRC_STRLEN 80	//too small and we get an assert() failure in smartcat() !!!
+/** Return string for neg response code
+ *
+ * rxdata must point to the data frame (no headers), i.e. 0x7F <SID> <NRC>
+ */
 const char *decode_nrc(uint8_t *rxdata) {
 	struct diag_msg tmsg;
 	static char descr[NRC_STRLEN]="";
+	const char *output;
 
 	u8 nrc = rxdata[2];
 
@@ -982,6 +1019,12 @@ const char *decode_nrc(uint8_t *rxdata) {
 //#define C2_NRC_ENGRUN 0x94 //SID 27, not sure - engine running ?
 //??? 0x95 //SID 27
 
+	// 1) try npk NRCs
+	output = decode_nrc_npk(nrc);
+	if (output) return output;
+
+	// 2) try mfg-specific NRCs
+
 	switch (nrc) {
 	case C2_NRC_BAD_SID36_SEQ:
 		return "Bad SID 36 block sequence / length";
@@ -993,7 +1036,7 @@ const char *decode_nrc(uint8_t *rxdata) {
 		return "Low battery voltage";
 		break;
 	default:
-		//Try Standard ISO14230 NRC
+		// 3) Try Standard ISO14230 NRC
 		tmsg.data = rxdata;
 		tmsg.len = 3;	//assume rxdata contains a "7F <SID> <NRC>" message
 		(void) diag_l3_iso14230_decode_response(&tmsg, descr, NRC_STRLEN);
