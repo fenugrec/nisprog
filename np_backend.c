@@ -766,7 +766,7 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 		goto badexit;
 	}
 
-	/* 2- Unprotect maybe. TODO : use SID defines here and after */
+	/* 2- Unprotect maybe */
 	if (!practice) {
 		txdata[0]=SID_FLASH;
 		txdata[1]=SIDFL_UNPROTECT;

@@ -574,59 +574,6 @@ static int np_2(int argc, char **argv) {
 }
 
 
-/** np 4 : dump <len> bytes @<start> to already-opened <outf>;
- * uses read_ac() (std L2 request + recv mechanism)
- * return CMD_*
- */
-static int dump_slow(FILE *outf, uint32_t start, uint32_t len) {
-	int retryscore = 100;	/* iteration failures decrease this; success increases it up to 100. Abort when 0. */
-
-	if (!outf) return CMD_FAILED;
-
-	/* cheat : we know read_ac is faster (less overhead) for multiples of 12,
-	 * so read 12*16 = 192B chunks.
-	 */
-	while ((len > 0) && (retryscore > 0)) {
-		uint8_t tbuf[12*16];
-		uint32_t rsize;
-		uint32_t res;
-		unsigned long chrono;
-
-		chrono=diag_os_getms();
-		rsize = MIN(len, ARRAY_SIZE(tbuf));
-		res = read_ac(tbuf, start, rsize);
-		if (res != rsize) {
-			/* partial read; not necessarily fatal */
-			retryscore -= 25;
-			diag_os_millisleep(300);
-			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-		}
-		diag_data_dump(stderr, tbuf, res);
-		if (fwrite(tbuf, 1, res, outf) != res) {
-			/* partial write; bigger problem. */
-			return CMD_FAILED;
-		}
-		chrono = diag_os_getms() - chrono;
-		if (!chrono) chrono += 1;
-
-		retryscore += (retryscore <= 95)? 5:0;
-
-		len -= res;
-		start += res;
-		if (res) {
-			printf("%u bytes remaining @ ~%lu Bps = %lu s.\n", len, (1000 * res) / chrono,
-				len * chrono / (res * 1000));
-		}
-	}
-	if (retryscore <= 0) {
-		//there was an error inside and no retries left
-		printf("Too many errors, no more retries @ addr=%08X.\n", start);
-		return CMD_FAILED;
-	}
-	return CMD_OK;
-}
-
-
 /** np 5 : fast dump <len> bytes @<start> to already-opened <outf>;
  * uses fast read technique (receive from L1 direct)
  *
@@ -866,63 +813,6 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 	return CMD_OK;
 }
 
-
-/** Dump memory to a file (direct binary copy)
- * @param froot: optional; prefix to auto-generated output filename
- * @param hackmode: if set, use shortcut method for reads (bypass L2_recv)
- * @return CMD_OK or CMD_FAILED
- */
-static int dumpmem(const char *froot, uint32_t start, uint32_t len, bool hackmode) {
-#define DUMPFILESZ 30
-	FILE *romdump;
-	char romfile[DUMPFILESZ+1]="";
-	char * openflags;
-	uint32_t nextaddr;	//start addr
-	uint32_t maxaddr;	//end addr
-	struct diag_l2_14230 * dlproto;	// for bypassing headers
-
-	nextaddr = start;
-	maxaddr = start + len - 1;
-
-	snprintf(romfile, DUMPFILESZ, "%s_%X-%X.bin", froot, start, start+len - 1);
-
-	//this allows download resuming if starting address was >0
-	openflags = (start>0)? "ab":"wb";
-
-	//Create / append to "rom-[ECUID].bin"
-	if ((romdump = fopen(romfile, openflags))==NULL) {
-		printf("Cannot open %s !\n", romfile);
-		return CMD_FAILED;
-	}
-
-	dlproto=(struct diag_l2_14230 *)global_l2_conn->diag_l2_proto_data;
-	if (dlproto->modeflags & ISO14230_SHORTHDR) {
-		printf("Using short headers.\n");
-		dlproto->modeflags &= ~ISO14230_LONGHDR;	//deactivate long headers
-	} else {
-		printf("cannot use hackmode; short headers not supported ! Have you \"set addrtype phys\" ?\n"
-				"Using dump_slow method as fallback.\n");
-		hackmode=0;	//won't work without short headers
-	}
-
-	if (!hackmode) {
-		int rv=dump_slow(romdump, nextaddr, maxaddr - nextaddr + 1);
-		fclose(romdump);
-		if (rv != CMD_OK) {
-			printf("Errors occured, dump may be incomplete.\n");
-			return CMD_FAILED;
-		}
-		return CMD_OK;
-	}
-	int rv = dump_fast(romdump, nextaddr, maxaddr - nextaddr +1);
-	fclose(romdump);
-	if (rv != CMD_OK) {
-		printf("Errors occured, dump may be incomplete.\n");
-		return CMD_FAILED;
-	}
-	return CMD_OK;
-
-}
 
 /** Read bytes from memory
  * copies <len> bytes from offset <addr> in ROM to *dest,
@@ -1562,9 +1452,6 @@ badexit:
 int cmd_npt(int argc, char **argv) {
 	unsigned testnum;
 
-	static uint8_t ECUID[7]="";
-
-	int hackmode=0;	//to modify test #4's behavior
 	uint32_t scode;	//for SID27
 
 	if ((argc <=1) || (sscanf(argv[1],"%u", &testnum) != 1)) {
@@ -1585,32 +1472,6 @@ int cmd_npt(int argc, char **argv) {
 	case 2:
 		return np_2(argc, argv);
 		break;
-	case 5:
-		//this is a "hack mode" of case 4: instead of using L2's request()
-		//interface, we use L2_send and L1_recv directly; this is much faster.
-		/* TODO : change syntax to np [4|5] <start> <len> ? */
-		hackmode=1;
-		printf("**** Activating Hackmode 5 ! ****\n\n");
-	case 4:
-		// ex.: "np 4 0 511" to dump from 0 to 511.
-		{	//cheat : code block to allow local var decls
-		uint32_t nextaddr, maxaddr;
-		if (argc != 4) {
-			printf("Bad args. npt 4 <start> <end>\n");
-			return CMD_USAGE;
-		}
-
-		maxaddr = (uint32_t) htoi(argv[3]);
-		nextaddr = (uint32_t) htoi(argv[2]);
-
-		if (nextaddr > maxaddr) {
-			printf("bad args.\n");
-			return CMD_FAILED;
-		}
-
-		return dumpmem((const char *)ECUID, nextaddr, maxaddr - nextaddr + 1, hackmode);
-		}
-		break;	//cases 4,5 : dump with AC
 	case 7:
 		if (argc != 3) {
 			printf("SID27 test. usage: npt 7 <scode>\n");
