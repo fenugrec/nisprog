@@ -30,6 +30,7 @@
 #include "np_backend.h"
 #include "nissutils/cli_utils/nislib.h"
 #include "nissutils/cli_utils/ecuid_list.h"
+#include "npkern/iso_cmds.h"
 
 #define CURFILE "np_cli.c"	//XXXXX TODO: fix VS automagic macro setting
 
@@ -447,7 +448,7 @@ int cmd_stopkernel(int argc, UNUSED(char **argv)) {
 
 	printf("Resetting ECU and closing connection. You may need to change speed before reconnecting.\n");
 
-	txdata[0]=0x11;
+	txdata[0]=SID_RESET;
 	nisreq.len=1;
 	nisreq.data=txdata;
 
@@ -1268,7 +1269,7 @@ static int npk_RMBA(uint8_t *dest, uint32_t addr, uint32_t len) {
 		return -1;
 	}
 
-	txdata[0] = 0x23;
+	txdata[0] = SID_RMBA;
 	nisreq.len = 5;
 
 	while (len) {
@@ -1285,7 +1286,7 @@ static int npk_RMBA(uint8_t *dest, uint32_t addr, uint32_t len) {
 			printf("npk sid23 failed : %d\n", errval);
 			return -1;
 		}
-		if ((rxmsg->data[0] != 0x63) || (rxmsg->len != curlen + 4)) {
+		if ((rxmsg->data[0] != (SID_RMBA + 0x40)) || (rxmsg->len != curlen + 4)) {
 			printf("got bad / incomplete SID23 response:\n");
 			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 			printf("\n");
@@ -1323,7 +1324,10 @@ static int npk_rxrawdump(uint8_t *dest, uint32_t skip_start, uint32_t numblocks)
 			goto badexit;
 		}
 		uint8_t cks = diag_cks1(rxbuf, 2 + 32);
-		if ((errval != 35) || (rxbuf[0] != 0x21) || (rxbuf[1] != 0xFD) || (cks != rxbuf[34])) {
+		if (	(errval != 35) ||
+				(rxbuf[0] != 0x21) ||
+				(rxbuf[1] != (SID_DUMP + 0x40)) ||
+				(cks != rxbuf[34])) {
 			printf("no / incomplete / bad response\n");
 			diag_data_dump(stdout, rxbuf, errval);
 			printf("\n");
@@ -1377,8 +1381,8 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 	uint32_t willget = (skip_start + len + 31) & ~(32 - 1);
 	uint32_t len_done = 0;	//total data written to file
 
-	txdata[0] = 0xBD;
-	txdata[1] = eep? 0 : 1;
+	txdata[0] = SID_DUMP;
+	txdata[1] = eep? SID_DUMP_EEPROM : SID_DUMP_ROM;
 #define NP10_MAXBLKS	8	//# of blocks to request per loop. Too high might flood us
 	nisreq.len = 6;
 

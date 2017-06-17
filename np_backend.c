@@ -27,6 +27,8 @@
 #include "nisprog.h"
 #include "np_backend.h"
 #include "nissutils/cli_utils/nislib.h"
+#include "npkern/iso_cmds.h"
+#include "npkern/npk_errcodes.h"
 
 
 #define CURFILE "np_backend.c"	//HAAAX
@@ -519,10 +521,9 @@ static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *
 
 		//request format : <SID_CONF> <SID_CONF_CKS1> <CNH> <CNL> <CRC0H> <CRC0L> ...<CRC3H> <CRC3L>
 		//verify if <CRCH:CRCL> hash is valid for n*256B chunk of the ROM (starting at <CNH:CNL> * 256)
-#define SID_CONF 0xBE
 	unsigned txi;
 	txdata[0]=SID_CONF;
-	txdata[1]=0x03;
+	txdata[1]=SID_CONF_CKS1;
 
 	nisreq.data=txdata;
 
@@ -569,7 +570,7 @@ static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *
 			goto badexit;
 		}
 
-		if ((rxbuf[2] != SID_CONF) || (rxbuf[3] != 0x77)) {
+		if ((rxbuf[2] != SID_CONF) || (rxbuf[3] != SID_CONF_CKS1_BADCKS)) {
 			printf("\ngot bad SID_FLASH_CKS1 response : ");
 			goto badexit;
 		}
@@ -659,8 +660,8 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 		return -1;
 	}
 
-	txdata[0]=0xBC;
-	txdata[1]=0x02;
+	txdata[0]=SID_FLASH;
+	txdata[1]=SIDFL_WB;
 	nisreq.len = 134;	//2 (header) + 3 (addr) + 128 (payload) + 1 (extra CRC)
 
 	t0 = diag_os_getms();
@@ -708,7 +709,7 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 			return -1;
 		}
 
-		if (rxbuf[1] != 0xFC) {
+		if (rxbuf[1] != (SID_FLASH + 0x40)) {
 			//maybe negative response, if so, get the remaining packet
 			printf("\n\tProblem: bad response @ %X\n", (unsigned) start);
 
@@ -754,12 +755,12 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 	len = fdt->fblocks[blockno].len;
 
 	/* 1- requestdownload */
-	txdata[0]=0x34;
+	txdata[0]=SID_FLREQ;
 	nisreq.len = 1;
 	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
 	if (rxmsg==NULL)
 		goto badexit;
-	if (rxmsg->data[0] != 0x74) {
+	if (rxmsg->data[0] != (SID_FLREQ + 0x40)) {
 		printf("got bad RequestDownload response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 		printf("\n");
@@ -769,14 +770,14 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 
 	/* 2- Unprotect maybe. TODO : use SID defines here and after */
 	if (!practice) {
-		txdata[0]=0xBC;
-		txdata[1]=0x55;
-		txdata[2]=0xaa;
+		txdata[0]=SID_FLASH;
+		txdata[1]=SIDFL_UNPROTECT;
+		txdata[2]=~SIDFL_UNPROTECT;
 		nisreq.len = 3;
 		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
 		if (rxmsg==NULL)
 			goto badexit;
-		if (rxmsg->data[0] != 0xFC) {
+		if (rxmsg->data[0] != (SID_FLASH + 0x40)) {
 			printf("got bad Unprotect response : ");
 			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 			printf("\n");
@@ -789,8 +790,8 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 	/* 3- erase block */
 	printf("Erasing block %u (0x%06X-0x%06X)...\n",
 			blockno, (unsigned) start, (unsigned) start + len - 1);
-	txdata[0] = 0xBC;
-	txdata[1] = 0x01;
+	txdata[0] = SID_FLASH;
+	txdata[1] = SIDFL_EB;
 	txdata[2] = blockno;
 	nisreq.len = 3;
 	/* Problem : erasing can take a lot more than the default P2max for iso14230 */
@@ -802,7 +803,7 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 		printf("no ERASE_BLOCK response?\n");
 		goto badexit;
 	}
-	if (rxmsg->data[0] != 0xFC) {
+	if (rxmsg->data[0] != (SID_FLASH + 0x40)) {
 		printf("got bad ERASE_BLOCK response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 		printf("\n");
@@ -876,9 +877,9 @@ int set_eepr_addr(uint32_t addr) {
 
 	nisreq.data=txdata;	//super very essential !
 
-    //SID_CONF_SETEEPR 0x02	/* set eeprom_read() function address <SID_CONF> <SID_CONF_SETEEPR> <AH> <AM> <AL> */
-	txdata[0] = 0xBE;
-	txdata[1] = 0x02;
+    /* set eeprom_read() function address <SID_CONF> <SID_CONF_SETEEPR> <AH> <AM> <AL> */
+	txdata[0] = SID_CONF;
+	txdata[1] = SID_CONF_SETEEPR;
 	txdata[2] = (addr >> 16) & 0xff;
 	txdata[3] = (addr >> 8) & 0xff;
 	txdata[4] = (addr >> 0) & 0xff;
@@ -887,7 +888,7 @@ int set_eepr_addr(uint32_t addr) {
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
 	if (rxmsg==NULL)
 		return -1;
-	if (rxmsg->data[0] != 0xFE) {
+	if (rxmsg->data[0] != (SID_CONF + 0x40)) {
 		printf("got bad BE response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 		printf("\n");
@@ -941,16 +942,16 @@ int set_kernel_speed(uint16_t kspeed) {
 	nisreq.data=txdata;	//super very essential !
 
     //#define SID_CONF_SETSPEED 0x01	/* set comm speed (BRR divisor reg) : <SID_CONF> <SID_CONF_SETSPEED> <new divisor> */
-	txdata[0] = 0xBE;
-	txdata[1] = 0x01;
+	txdata[0] = SID_CONF;
+	txdata[1] = SID_CONF_SETSPEED;
 	txdata[2] = newdiv & 0xff;
 	nisreq.len=3;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
 	if (rxmsg==NULL)
 		return -1;
-	if (rxmsg->data[0] != 0xFE) {
-		printf("got bad BE response : ");
+	if (rxmsg->data[0] != (SID_CONF + 0x40)) {
+		printf("got bad SID_CONF response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 		printf("\n");
 		diag_freemsg(rxmsg);
@@ -979,7 +980,7 @@ const char *decode_nrc(uint8_t *rxdata) {
 #define C2_NRC_LOWSYSV 0x92
 //??? 0x93 //SID 27
 //#define C2_NRC_ENGRUN 0x94 //SID 27, not sure - engine running ?
-//??? 0x95 //SID 27SID 27
+//??? 0x95 //SID 27
 
 	switch (nrc) {
 	case C2_NRC_BAD_SID36_SEQ:
