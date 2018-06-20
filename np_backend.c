@@ -1041,9 +1041,9 @@ const char *decode_nrc(uint8_t *rxdata) {
 #define C2_NRC_BAD_SID36_SEQ 0x90
 #define C2_NRC_BAD_SID37_CKS 0x91
 #define C2_NRC_LOWSYSV 0x92
-//??? 0x93 //SID 27
-//#define C2_NRC_ENGRUN 0x94 //SID 27, not sure - engine running ?
-//??? 0x95 //SID 27
+#define C2_NRC_ADCG 0x93 //SID 27, "Additional charge condition" = wtf
+#define C2_NRC_ENGRUN 0x94 //SID 27, fENGRUN - engine running
+#define C2_NRC_LOADSW 0x95 //SID 27, electrical loads present
 
 	// 1) try npk NRCs
 	output = decode_nrc_npk(nrc);
@@ -1060,6 +1060,15 @@ const char *decode_nrc(uint8_t *rxdata) {
 		break;
 	case C2_NRC_LOWSYSV:
 		return "Low battery voltage";
+		break;
+	case C2_NRC_ADCG:
+		return "Additional charge condition (?)";
+		break;
+	case C2_NRC_ENGRUN:
+		return "Engine running";
+		break;
+	case C2_NRC_LOADSW:
+		return "Electrical loads active";
 		break;
 	default:
 		// 3) Try Standard ISO14230 NRC
