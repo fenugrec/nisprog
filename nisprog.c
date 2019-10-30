@@ -70,12 +70,7 @@ static int np_init(void) {
 int main(int argc, char **argv) {
 	int i ;
 	const char *startfile=NULL;	/* optional commands to run at startup */
-
-	dbg_stream = tmpfile();
-	if (!dbg_stream) {
-		printf("can't create temp file !\n");
-		goto badexit;
-	}
+	dbg_stream = stdout;
 
 	for ( i = 1 ; i < argc ; i++ ) {
 		if ( argv[i][0] == '-' || argv[i][0] == '+' ) {
@@ -109,12 +104,10 @@ int main(int argc, char **argv) {
 
 goodexit:
 	(void) diag_end();
-	if (dbg_stream) fclose(dbg_stream);
 	return 0;
 
 badexit:
 	(void) diag_end;
-	if (dbg_stream) fclose(dbg_stream);
 	return 1;
 }
 
