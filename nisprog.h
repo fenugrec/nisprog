@@ -36,6 +36,7 @@ int cmd_npconn(int argc, char **argv);
 int cmd_npdisc(int argc, char **argv);
 int cmd_npconf(int argc, char **argv);
 int cmd_setdev(int argc, char **argv);
+int cmd_guesskey(int argc, char **argv);
 int cmd_setkeys(int argc, char **argv);
 int cmd_kspeed(int argc, char **argv);
 int cmd_runkernel(int argc, char **argv);

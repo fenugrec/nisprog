@@ -76,6 +76,7 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep);
 static int dump_fast(FILE *outf, const uint32_t start, uint32_t len);
 static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len);
 static int npk_RMBA(uint8_t *dest, uint32_t addr, uint32_t len);
+static bool set_keyset(u32 s27k);
 
 
 
@@ -211,6 +212,7 @@ int cmd_dumpmem(int argc, char **argv) {
 }
 
 #define KEY_CANDIDATES 3
+#define KEY_MAXDIST 10	//do not use keys that are way off
 void autoselect_keyset(void) {
 	unsigned i;
 	u32 s27k;
@@ -225,17 +227,17 @@ void autoselect_keyset(void) {
 	printf("\n");
 	// TODO : allow user selection
 
+	if (kcs[0].dist > KEY_MAXDIST) {
+		printf("ECUID matching was not conclusive, keyset unknown. Try gk or setkeys\n");
+		return;
+	}
+
 	s27k = kcs[0].key;
 
-	for (i=0; known_keys[i].s27k != 0; i++) {
-		if (s27k == known_keys[i].s27k) {
-			nisecu.keyset = (void *) &known_keys[i];
-			break;
-		}
-	}
-	assert(known_keys[i].s27k != 0);
-	printf("Using best choice, SID27 key=%08lX, SID36 key1=%08lX\nUse \"setkeys\" to change keyset.\n",
-				(unsigned long) known_keys[i].s27k, (unsigned long) known_keys[i].s36k1);
+	(void) set_keyset(s27k);
+
+	printf("Using best choice, SID27 key=%08lX. Use \"setkeys\" to change if required.\n",
+			(unsigned long) s27k);
 
 	return;
 }
@@ -298,12 +300,8 @@ int cmd_setkeys(int argc, char **argv) {
 		goto goodexit;
 	}
 
-	unsigned i;
-	for (i=0; known_keys[i].s27k != 0; i++) {
-		if (s27k == known_keys[i].s27k) {
-			nisecu.keyset = (void *) &known_keys[i];
-			goto goodexit;
-		}
+	if (set_keyset(s27k)) {
+		goto goodexit;
 	}
 
 	printf("Does not match a known keyset; you will need to provide both s27 and s36 keys\n");
@@ -412,7 +410,6 @@ int cmd_npconn(int argc, char **argv) {
 	struct diag_l2_14230 * dlproto;	// for bypassing headers
 	dlproto = (struct diag_l2_14230 *)global_l2_conn->diag_l2_proto_data;
 	if (dlproto->modeflags & ISO14230_SHORTHDR) {
-		printf("Using short headers.\n");
 		dlproto->modeflags &= ~ISO14230_LONGHDR;	//deactivate long headers
 	} else {
 		printf("Short headers not supported by ECU ! Have you \"set addrtype phys\" ?"
@@ -976,6 +973,96 @@ static uint16_t encrypt_buf(uint8_t *buf, uint32_t len, uint32_t key) {
 }
 
 
+/** search for the given sid27 key in the known keysets;
+ * if found, update the keyset.
+ *
+ * @return 1 if ok
+ */
+static bool set_keyset(u32 s27k) {
+	unsigned i;
+	for (i=0; known_keys[i].s27k != 0; i++) {
+		if (s27k == known_keys[i].s27k) {
+			nisecu.keyset = &known_keys[i];
+			return 1;
+		}
+	}
+	return 0;
+}
+
+#define S27K_DEFAULTADDR	0xffff8416UL
+#define S27K_SEARCHSTART	0xffff8000UL
+#define S27K_SEARCHEND	0xffffA000UL	//on 7055, 7058 targets this will be adequate. TODO : adjust according to nisecu.flashdev ?
+#define S27K_SEARCHSIZE	0x100	//search this many bytes at a time
+
+/* attempt to extract sid27 key by dumping RAM progressively. */
+int cmd_guesskey(int argc, char **argv) {
+	(void) argc;
+	(void) argv;
+	u8 buf[S27K_SEARCHSIZE];
+	u32 test32;
+	u32 maybe_8416;
+
+	if (npstate != NP_NORMALCONN) {
+		printf("Must be connected normally (nc command) !\n");
+		return CMD_FAILED;
+	}
+
+	/* strategy : SID 27 01 to get seed, check @ ffff8416 first since that is very common.
+	* Else, fallback to dumping common area.
+	*/
+
+	uint8_t txdata[2];
+	struct diag_msg *rxmsg, nisreq={0};
+	int errval;
+	nisreq.len=2;
+	nisreq.data=txdata;
+
+	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
+	if (rxmsg==NULL) {
+		return -1;
+		printf("couldn't 2701\n");
+	}
+	diag_freemsg(rxmsg);
+
+	if (read_ac(buf, S27K_DEFAULTADDR, 4) != 4) {
+		printf("short search failed?\n");
+		return CMD_FAILED;
+	}
+	//on those ROMs that do this, the key is stored in bigendian at ffff8416.
+	maybe_8416 = reconst_32(buf);
+
+	if (set_keyset(maybe_8416)) {
+		printf("keyset found @ram8416 and saved !\n");
+		return CMD_OK;
+	}
+	printf("Nothing @ 8416. Trying long search...\n");
+	// Assume the key, if present, is u16-aligned and saved in contiguous addresses.
+	// i.e. not as two half-keys stored separately.
+	// hence increment addr by (size - 2), to have overlapping chunks.
+
+	u32 addr;
+	for (addr=S27K_SEARCHSTART; addr < S27K_SEARCHEND; addr += (S27K_SEARCHSIZE - 2)) {
+		printf("%X\n",addr);
+		if (read_ac(buf, addr, S27K_SEARCHSIZE) != S27K_SEARCHSIZE) {
+			printf("long search query failed ?\n");
+			return CMD_FAILED;
+		}
+
+		unsigned idx;
+		for (idx=0; idx <= (S27K_SEARCHSIZE - 4); idx += 2) {
+			//for every dumped u32, try to match against known keysets.
+			test32 = reconst_32(&buf[idx]);
+			if (set_keyset(test32)) {
+				printf("keyset found and saved !\n");
+				return CMD_OK;
+			}
+		}
+	}
+
+	printf("key still not found. Maybe it's the one stored at ffff8416 anyway: 0x%08X ?\n"
+			"the sid36 key is still unknown though. Good luck.\n", (unsigned) maybe_8416);
+	return CMD_FAILED;
+}
 
 /* Does a complete SID 27 + 34 + 36 + BF sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 32 bytes to make SID36 happy
