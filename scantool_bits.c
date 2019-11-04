@@ -15,6 +15,7 @@ const int _RQST_HANDLE_DECODE = RQST_HANDLE_DECODE; 	//Just decode what arrived
 const struct cmd_tbl_entry test_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
 const struct cmd_tbl_entry vag_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
 const struct cmd_tbl_entry dyno_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
+const struct cmd_tbl_entry v850_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
 
 void l2raw_data_rcv(UNUSED(void *handle), struct diag_msg *msg) {
 	/*
