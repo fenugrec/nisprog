@@ -1011,7 +1011,7 @@ int cmd_guesskey(int argc, char **argv) {
 	* Else, fallback to dumping common area.
 	*/
 
-	uint8_t txdata[2];
+	uint8_t txdata[2] = {0x27, 0x01};
 	struct diag_msg *rxmsg, nisreq={0};
 	int errval;
 	nisreq.len=2;
