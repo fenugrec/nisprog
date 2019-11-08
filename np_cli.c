@@ -992,7 +992,7 @@ static bool set_keyset(u32 s27k) {
 #define S27K_DEFAULTADDR	0xffff8416UL
 #define S27K_SEARCHSTART	0xffff8000UL
 #define S27K_SEARCHEND	0xffffA000UL	//on 7055, 7058 targets this will be adequate. TODO : adjust according to nisecu.flashdev ?
-#define S27K_SEARCHSIZE	0x100	//search this many bytes at a time
+#define S27K_SEARCHSIZE	0x80	//search this many bytes at a time
 
 /* attempt to extract sid27 key by dumping RAM progressively. */
 int cmd_guesskey(int argc, char **argv) {
@@ -1035,10 +1035,12 @@ int cmd_guesskey(int argc, char **argv) {
 		printf("keyset found @ram8416 and saved !\n");
 		return CMD_OK;
 	}
-	printf("Nothing @ 8416. Trying long search...\n");
+	printf("Nothing @ 8416. Trying long search, press Enter to interrupt (may take a few seconds to interrupt)\n");
 	// Assume the key, if present, is u16-aligned and saved in contiguous addresses.
 	// i.e. not as two half-keys stored separately.
 	// hence increment addr by (size - 2), to have overlapping chunks.
+
+	(void) diag_os_ipending();	//must be done outside the loop first
 
 	u32 addr;
 	for (addr=S27K_SEARCHSTART; addr < S27K_SEARCHEND; addr += (S27K_SEARCHSIZE - 2)) {
@@ -1047,6 +1049,7 @@ int cmd_guesskey(int argc, char **argv) {
 			printf("long search query failed ?\n");
 			return CMD_FAILED;
 		}
+		if (diag_os_ipending()) break;
 
 		unsigned idx;
 		for (idx=0; idx <= (S27K_SEARCHSIZE - 4); idx += 2) {
