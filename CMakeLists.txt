@@ -1,5 +1,9 @@
-
 cmake_minimum_required(VERSION 2.8.12)
+
+###### override builtin gcc CFLAGS
+# because we don't want NDEBUG
+
+set (CMAKE_USER_MAKE_RULES_OVERRIDE_C "${CMAKE_CURRENT_SOURCE_DIR}/cmake/override_c.cmake")
 
 # don't go polluting c:\program files ; this has to go before project()
 set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "Default install prefix")
@@ -45,10 +49,9 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
 endif ()
 
 
+###### add some CFLAGS
+
 if (CMAKE_COMPILER_IS_GNUCC)
-	set (CMAKE_C_FLAGS_DEBUG "-g")
-	set (CMAKE_C_FLAGS_RELEASE "-DNDEBUG")
-	set (CMAKE_C_FLAGS_RELWITHDEBINFO "-gsplit-dwarf")
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat -pedantic -std=gnu99 -Wstrict-prototypes -Wsign-compare -Wredundant-decls" )
 #else ()
 	#not sure what we should use on other compilers.
