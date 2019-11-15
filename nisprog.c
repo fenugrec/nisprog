@@ -26,6 +26,8 @@
 #include "nisprog.h"
 #include "np_conf.h"
 
+extern const char *GIT_REV;	//defined in auto-generated version.c
+
 FILE *dbg_stream=NULL;	//for nislib
 enum npstate_t npstate;
 
@@ -98,7 +100,7 @@ int main(int argc, char **argv) {
 		goto badexit;
 	}
 
-	printf("%s v%s\n", NP_PROGNAME, NP_VERSION);;
+	printf("%s v%s-%s\n", NP_PROGNAME, NP_VERSION, GIT_REV);
 
 	enter_cli(NP_PROGNAME, startfile, np_cmdtable);
 
