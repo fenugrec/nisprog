@@ -1067,6 +1067,10 @@ int cmd_guesskey(int argc, char **argv) {
 	return CMD_FAILED;
 }
 
+
+
+#define KERNEL_MAXSIZE 10*1024U	//warn for kernels larger than this
+
 /* Does a complete SID 27 + 34 + 36 + BF sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 32 bytes to make SID36 happy
  */
@@ -1106,6 +1110,12 @@ int cmd_runkernel(int argc, char **argv) {
 	file_len = flen(fpl);
 	/* pad up to next multiple of 32 */
 	pl_len = (file_len + 31) & ~31;
+
+	if (pl_len >= KERNEL_MAXSIZE) {
+		printf(	"***************** warning : large kernel detected *****************\n"
+				"That file seems way too big (%lu bytes) to be a typical kernel.\n"
+				"Trying anyway, but you might be using an invalid/corrupt file", (unsigned long) pl_len);
+	}
 
 	if (diag_malloc(&pl_encr, pl_len)) {
 		printf("malloc prob\n");
