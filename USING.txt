@@ -74,6 +74,9 @@ nc
 #optional, if your ECUID needs special keys (let me know if this happens !)
 #setkeys 0x55552727 0xAAAA3636
 
+#or even better, try to guess keys by reading ECU RAM:
+#gk
+
 #try "setdev ?" to see choices, i.e. 7055 / 7058
 setdev 1
 
@@ -84,12 +87,15 @@ npconf p3 0
 
 #if you're having read/write errors and playing with some npconf parameters doesn't help:
 #try changing the kernel comms speed. By default this is 62500bps.
-kspeed 31250
+#kspeed 31250
 
 #Run Kernel. Note, spaces in filenames will not work !
 runkernel D:\dev\nis_kernels\npkern\npkern.bin
 
 #dump command, uses regular fastdump or npkern fastdump if available. Syntax is "dumpmem <file> <start> <len>"
+#Yes, dumpmem works on RAM addresses.
+#Yes, dumpmeme works with EEPROM addresses, with some caveats. see "help dm".
+
 dumpmem asdf.bin 0 256
 #shorthand , same thing:
 dm asdf.bin 0 256
