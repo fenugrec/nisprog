@@ -506,7 +506,7 @@ static u16 crc16(const u8 *data, u32 siz) {
 #define ROMCRC_ITERSIZE (ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE)
 #define ROMCRC_LENMASK ((ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE) - 1)	//should look like 0x3FF
 static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *modified) {
-	uint8_t txdata[6];	//data for nisreq
+	uint8_t txdata[4 + (2*ROMCRC_NUMCHUNKS)];	//data for nisreq
 	struct diag_msg nisreq={0};	//request to send
 	uint8_t rxbuf[10];
 	int errval;
