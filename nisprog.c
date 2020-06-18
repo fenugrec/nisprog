@@ -125,7 +125,7 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_npdisc, FLAG_HIDDEN, NULL},
 	{ "npconf", "npconf <paramname> <value>", "Set some extra parameters",
 			cmd_npconf, 0, NULL},
-	{ "setdev", "setdev <device_no>", "Set mcu type",
+	{ "setdev", "setdev <device>", "Set mcu type",
 			cmd_setdev, 0, NULL},
 	{ "gk", "gk", "Attempt to guess keyset",
 			cmd_guesskey, 0, NULL},
