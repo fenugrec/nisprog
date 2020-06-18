@@ -199,15 +199,18 @@ int cmd_dumpmem(int argc, char **argv) {
 
 	if (npstate == NP_NPKCONN) {
 		if (npk_dump(fpl, start, len, eep)) {
+			fclose(fpl);
 			return CMD_FAILED;
 		}
+		fclose(fpl);
 		return CMD_OK;
 	}
 	// npstate == NP_NORMALCONN:
 	if (dump_fast(fpl, start, len)) {
+		fclose(fpl);
 		return CMD_FAILED;
 	}
-
+	fclose(fpl);
 	return CMD_OK;
 }
 
@@ -571,7 +574,7 @@ static int np_2(int argc, char **argv) {
 /** np 5 : fast dump <len> bytes @<start> to already-opened <outf>;
  * uses fast read technique (receive from L1 direct)
  *
- * return CMD_*
+ * return CMD_* , caller must close outf
  */
 static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 		//SID AC + 21 technique.
@@ -797,8 +800,6 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			break;	//leave while()
 		}
 	}	//while retryscore>0
-
-	fclose(outf);
 
 	if (retryscore <= 0) {
 		printf("Too many errors, no more retries @ addr=%08X.\n", start);
@@ -1116,6 +1117,7 @@ int cmd_runkernel(int argc, char **argv) {
 
 	if (diag_malloc(&pl_encr, pl_len)) {
 		printf("malloc prob\n");
+		fclose(fpl);
 		return CMD_FAILED;
 	}
 
@@ -1358,7 +1360,7 @@ badexit:
 /** npkern-based fastdump (EEPROM / ROM / RAM)
  * kernel must be running first
  *
- * return 0 if ok
+ * return 0 if ok. Caller must close fpl
  */
 static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 
@@ -1460,8 +1462,6 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 
 	}	//while
 	printf("\n");
-
-	fclose(fpl);
 	return 0;
 
 badexit:
