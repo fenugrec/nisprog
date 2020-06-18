@@ -144,9 +144,11 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_initk, 0, NULL},
 	{ "dumpmem", "dumpmem <file> <start> <#_of_bytes> [eep]", "(shorthand: \"dm\") dump memory from ROM/RAM address space, or EEPROM if\n"
 							"\t\"eep\" is added at the end.\n"
-							"\tExample: \"dm asdf.bin 0x1000 16\" will dump 0x10 bytes of ROM (0x1000-0x100F) to asdf.bin",
+							"\tExample: \"dm asdf.bin 0x1000 16\" : dump 16 bytes of ROM (0x1000-0x100F)\n"
+							"\tExample: \"dm asdf.bin 0 0\", specifying start and length as 0 will\n"
+							"\tdump the entire ROM (must run \"setdev\" first)\n",
 			cmd_dumpmem, 0, NULL},
-	{ "dm", "dm <file> <start> <#_of_bytes> [eep]", "(see \"dumpmem\")dump memory from ROM/RAM/EEPROM",
+	{ "dm", "dm <file> <start> <#_of_bytes> [eep]", "(see \"dumpmem\")",
 			cmd_dumpmem, FLAG_HIDDEN, NULL},
 	{ "flverif", "flverif <file>", "Compare <file> against ROM",
 			cmd_flverif, 0, NULL},

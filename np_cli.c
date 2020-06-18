@@ -195,6 +195,17 @@ int cmd_dumpmem(int argc, char **argv) {
 	start = (uint32_t) htoi(argv[2]);
 	len = (uint32_t) htoi(argv[3]);
 
+	if ((start == len) && (start == 0)) {
+		//special mode : dump all ROM as specified by device type.
+		const struct flashdev_t *fdt = nisecu.flashdev;
+		if (!fdt) {
+			printf("device type not set. Try setdev, or specify bounds manually.\n");
+			fclose(fpl);
+			return CMD_FAILED;
+		}
+		len = fdt->romsize;
+	}
+
 	/* Dispatch according to current state */
 
 	if (npstate == NP_NPKCONN) {
