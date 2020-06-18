@@ -65,7 +65,7 @@ static struct nparam_t *nparams[] = {
 	NULL
 };
 
-
+struct nisecu_t nisecu;
 
 /** some static data for in here only */
 static struct keyset_t customkey;

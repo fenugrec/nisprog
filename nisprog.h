@@ -24,7 +24,9 @@ struct nisecu_t {
 	const void *keyset;	/** keyset to use */
 	const void *flashdev;	/** device descriptor */
 
-} nisecu;
+};
+
+extern struct nisecu_t nisecu;
 
 
 /* public funcs */
