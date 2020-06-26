@@ -867,8 +867,8 @@ static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 		}
 		if ((rxmsg->data[0] != 0xEC) || (rxmsg->len != 2) ||
 				(rxmsg->fmt & DIAG_FMT_BADCS)) {
-			printf("\nFatal : bad AC resp at addr=0x%X: %02X, len=%u\n", addr,
-				rxmsg->data[0], rxmsg->len);
+			printf("\nFatal : bad AC resp at addr=0x%X:\n", addr);
+			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 			diag_freemsg(rxmsg);
 			break;
 		}
