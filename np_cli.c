@@ -1010,6 +1010,8 @@ int cmd_guesskey(int argc, char **argv) {
 	u8 buf[S27K_SEARCHSIZE];
 	u32 test32;
 	u32 maybe_8416;
+	u32 foundaddr;
+	const struct keyset_t *gkeyset;
 
 	if (npstate != NP_NORMALCONN) {
 		printf("Must be connected normally (nc command) !\n");
@@ -1041,8 +1043,8 @@ int cmd_guesskey(int argc, char **argv) {
 	maybe_8416 = reconst_32(buf);
 
 	if (set_keyset(maybe_8416)) {
-		printf("keyset found @ram8416 and saved !\n");
-		return CMD_OK;
+		foundaddr = S27K_DEFAULTADDR;
+		goto guesskey_found;
 	}
 	printf("Nothing @ 8416. Trying long search, press Enter to interrupt (may take a few seconds to interrupt)\n");
 	// Assume the key, if present, is u16-aligned and saved in contiguous addresses.
@@ -1065,8 +1067,8 @@ int cmd_guesskey(int argc, char **argv) {
 			//for every dumped u32, try to match against known keysets.
 			test32 = reconst_32(&buf[idx]);
 			if (set_keyset(test32)) {
-				printf("keyset found and saved !\n");
-				return CMD_OK;
+				foundaddr = addr + idx;
+				goto guesskey_found;
 			}
 		}
 	}
@@ -1074,6 +1076,11 @@ int cmd_guesskey(int argc, char **argv) {
 	printf("key still not found. Maybe it's the one stored at ffff8416 anyway: 0x%08X ?\n"
 			"the sid36 key is still unknown though. Good luck.\n", (unsigned) maybe_8416);
 	return CMD_FAILED;
+
+guesskey_found:
+	gkeyset = nisecu.keyset;
+	printf("keyset %08X found @ 0x%08X and saved !\n", gkeyset->s27k, foundaddr);
+				return CMD_OK;
 }
 
 
