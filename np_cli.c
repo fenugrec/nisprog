@@ -655,6 +655,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 
 				printf("\rreading @ 0x%08X (%3u %%, %5u B/s, ~ %3u:%02u remaining ", nextaddr,
 								(unsigned) 100 * (maxaddr - addr) / len, curspeed, tmin, tsec);
+				fflush(stdout);
 				chron_cnt = 0;
 				t0 = diag_os_getms();
 			}
@@ -1427,6 +1428,7 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 		if (!curspeed) curspeed += 1;
 		tleft = (willget / curspeed) % 9999;	//s
 		printf("\rnpk dump @ 0x%08X, %5u B/s, %4u s remaining\t", iter_addr, curspeed, tleft);
+		fflush(stdout);
 
 		numblocks = willget / 32;
 

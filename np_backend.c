@@ -351,6 +351,7 @@ int sid36(uint8_t *buf, uint32_t len) {
 		}
 		printf("\rSID36 block 0x%04X/0x%04X done",
 				(unsigned) blockno, (unsigned) maxblocks);
+		fflush(stdout);
 	}
 	printf("\n");
 	fflush(stdout);
@@ -600,6 +601,7 @@ int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struc
 
 		printf("\rchecking block %02u/%02u (%06lX-%06lX)...",
 				blockno, fdt->numblocks -1, (unsigned long) bs, (unsigned long) bs + blen -1);
+		fflush(stdout);
 		/* compare with caller's buffer if provided: */
 		if (orig_data) {
 			if (memcmp(&src[bs], &orig_data[bs], blen) == 0) {
@@ -678,6 +680,7 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 
 		printf("\rwriting chunk @ 0x%06X (%3u %%, %5u B/s, ~ %4u s remaining)", start, (unsigned) 100 * (len - remain) / len,
 				curspeed, tleft);
+		fflush(stdout);
 
 		txdata[2] = start >> 16;
 		txdata[3] = start >> 8;
