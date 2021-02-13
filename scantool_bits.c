@@ -12,10 +12,42 @@ const int _RQST_HANDLE_WATCH = RQST_HANDLE_WATCH;  //Watching: add timestamp
 const int _RQST_HANDLE_DECODE = RQST_HANDLE_DECODE; 	//Just decode what arrived
 
 /* garbage to make freediag cli compile */
-const struct cmd_tbl_entry test_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
-const struct cmd_tbl_entry vag_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
-const struct cmd_tbl_entry dyno_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
-const struct cmd_tbl_entry v850_cmd_table[] = {{ NULL, NULL, NULL, NULL, 0, NULL}};
+const struct cmd_tbl_entry test_cmd_table[] = {
+	{ "up", "up", "Return to previous menu level",
+		cmd_up, 0, NULL},
+	{ "quit","quit", "Exit program",
+		cmd_exit, FLAG_HIDDEN, NULL},
+	{ "exit", "exit", "Exit program",
+		cmd_exit, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}};
+
+const struct cmd_tbl_entry vag_cmd_table[] = {
+	{ "up", "up", "Return to previous menu level",
+		cmd_up, 0, NULL},
+	{ "quit","quit", "Exit program",
+		cmd_exit, FLAG_HIDDEN, NULL},
+	{ "exit", "exit", "Exit program",
+		cmd_exit, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}};
+
+
+const struct cmd_tbl_entry dyno_cmd_table[] = {
+	{ "up", "up", "Return to previous menu level",
+		cmd_up, 0, NULL},
+	{ "quit","quit", "Exit program",
+		cmd_exit, FLAG_HIDDEN, NULL},
+	{ "exit", "exit", "Exit program",
+		cmd_exit, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}};
+
+const struct cmd_tbl_entry v850_cmd_table[] = {
+	{ "up", "up", "Return to previous menu level",
+		cmd_up, 0, NULL},
+	{ "quit","quit", "Exit program",
+		cmd_exit, FLAG_HIDDEN, NULL},
+	{ "exit", "exit", "Exit program",
+		cmd_exit, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}};
 
 void l2raw_data_rcv(UNUSED(void *handle), struct diag_msg *msg) {
 	/*
