@@ -271,12 +271,12 @@ int cmd_setdev(int argc, char **argv) {
 
 	if (argv[1][0] == '?') {
 		helping = 1;
-		printf("dev #\tname\tROM size\n");
+		printf("\tname\tROM size\n");
 	}
 
 	for (idx=0; flashdevices[idx].name; idx++) {
 		if (helping) {
-			printf(" %u\t%s\t%uk\n", idx, flashdevices[idx].name, (unsigned) flashdevices[idx].romsize / 1024);
+			printf("\t%s\t%uk\n", flashdevices[idx].name, (unsigned) flashdevices[idx].romsize / 1024);
 			continue;
 		}
 		if (strcmp(flashdevices[idx].name, argv[1]) == 0) {
