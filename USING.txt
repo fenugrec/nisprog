@@ -1,5 +1,5 @@
 If you're having trouble reading this file or "nisprog.ini" (no newlines, etc) :
-open with another text editor (wordpad or whatever; notepad can't deal with this usually)
+try opening with another text editor (wordpad or whatever; notepad can't deal with this usually)
 
 I'm not going to write a nice manual for this, sorry.
 If you don't pay attention you can brick your ECU !
@@ -7,42 +7,50 @@ If you don't pay attention you can brick your ECU !
 The core commands (set, debug, etc) are from freediag's code base;
 refer to its manual for more info : http://freediag.sourceforge.net/Scantool-Manual.html
 
+********************************
 **** getting help inside nisprog
 In nisprog, you can do either
 "help <whatever_command>"
 or
 "commandname ?" to get descriptions and help etc. I think most of it should be pretty self-explanatory.
 
+
+********************************
 **** command availability vs npkern
 The main idea is that some commands only work if the ECU is running npkern (see github.com/fenugrec/npkern ) :
 		flverif
 		flblock
 		flrom
-OTOH, "dumpmem" always works, but is way way faster with npkern running.
+OTOH, "dumpmem" always works, but is way faster if npkern is running.
 
 For that, you'll need an npkern kernel (compiled of course, maybe npkern_7058.bin ). See "runkernel" command
 
+
+********************************
 **** If you get in trouble (weird errors, etc)
-"debug l1 0x8c" will start showing all sent/received data which helps for tracking issues.
+"debug l1 0x8c" will start showing all sent/received data which helps for tracking some issues.
 Just do "debug l1 0" to silence the extra output.
 
-try adjusting timing, etc. (see parameters for "npconf" command)
+Try adjusting timings, etc. (see parameters for "npconf" command)
 
 If you want me to help, I'll need
 		full console output (previous commands, all errors etc)
 		nisprog version
 		OS, K line hardware / drivers, etc.
 
-filing issues on GitHub is ok. Or you can post on the RomRaider forums.
+Filing issues on GitHub is ideal. Or you can post on the RomRaider forums.
 
 
+********************************
 **** special "submenu" commands
 some commands (like "set", "debug", etc) also act as submenus, i.e.
+
 ######
 set
 interface dumb
 port asdfasdf
 up
+
 ## does the same thing as
 set interface dumb
 set port asdfasdf
@@ -71,17 +79,19 @@ up
 #connect to ECU
 nc
 
-#optional, if your ECUID needs special keys (let me know if this happens !)
+#optional, if the suggested keysets do not work with your ECUID : guesskey
+gk
+
+# Or, if gk failed, (let me know if this happens !), specify keys manually.
 #setkeys 0x55552727 0xAAAA3636
 
-#or even better, try to guess keys by reading ECU RAM:
-#gk
 
-#try "setdev ?" to see choices, i.e. 7055 / 7058
-setdev 1
+#try "setdev ?" to see choices
+setdev 7055
 
 #some extra parameters if you're having timing issues (frequent read timeouts etc)
 #try "npconf ?" to see list.
+
 #Setting P3 to 0 usually works well and makes comms faster.
 npconf p3 0
 
@@ -92,11 +102,16 @@ npconf p3 0
 #Run Kernel. Note, spaces in filenames will not work !
 runkernel D:\dev\nis_kernels\npkern\npkern.bin
 
-#dump command, uses regular fastdump or npkern fastdump if available. Syntax is "dumpmem <file> <start> <len>"
+********************************
+**** dump commands
+# dumpem uses regular fastdump, or npkern fastdump if available. Syntax is "dumpmem <file> <start> <len>"
 #Yes, dumpmem works on RAM addresses.
-#Yes, dumpmeme works with EEPROM addresses, with some caveats. see "help dm".
+#Yes, dumpmem works with EEPROM addresses, with some caveats. Try "help dm".
+# Even better : you can "dm file.bin 0 0" to dump the entire ROM (size determined by whatever
+# device was set with "setdev". I.e. 512kB for 7055, 1024kB for 7058 etc. )
 
 dumpmem asdf.bin 0 256
+
 #shorthand , same thing:
 dm asdf.bin 0 256
 
@@ -111,20 +126,21 @@ flrom whatever_rom.bin
 # ( they're called "erase blocks" in the ROM chapter of the datasheet )
 # for example block 15 (0x0F) starts at offset 0x000E0000 in the ROM, and is 128kB in length.
 
-# It is normal for a flrom "dry run" to report verification errors, since it does NOT modify the ECU.
+# It is normal for a flrom "dry run" to report write verification errors, since it does NOT modify the ECU.
 
-#timing errors ? add some delays with "npconf" and try again.
+********************************
+#Having some timing, or incomplete response errors ? Add some delays with "npconf" and try again.
 #Don't panic, and DO NOT POWER OFF THE ECU if you suspect there were flash errors !
 
-#all done ? are you sure ? then reset the ECU to leave kernel mode. Note, this has the same effect
-#as power cycling the ECU / cutting all power to it, so DTCs and self-learn values are lost, etc.
+#all done ? are you sure ? Then stop the kernel which will restart the ECU. Note, this has the same effect
+#as power cycling the ECU / cutting all power to it, so DTCs and self-learn values may be lost, other DTCs may appear etc.
 stopkernel
 
 #and disconnect / quit
 npdisc
 quit
 
-
+********************************
 #your laptop or nisprog crashed, or you quit before stopping the kernel ?
 #No problem. Restart nisprog;
 #do your usual
@@ -133,11 +149,13 @@ interface dumb
 port blablabla
 etc
 
-#with one difference : kernel is running comms at a different speed, so
+#with one difference : kernel is running comms at a different speed, so :
 set speed 62500
-#connect should work pretty solid
+
+#connect should work on the first try
 nc
-#and set kernel speed + init the already-running kernel :
+
+#and set kernel speed , and init the already-running kernel :
 kspeed 62500
 #initk (optional)
 
