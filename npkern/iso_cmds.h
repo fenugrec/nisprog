@@ -21,6 +21,8 @@
 
 
 #define SID_RECUID	0x1A	/* readECUID , in this case kernel ID */
+#define SID_RECUID_PRC	"\x5A"	/* positive response code, to be concatenated to version string */
+
 #define SID_RMBA 0x23	/* ReadMemByAddress. format : <SID_RMBA> <AH> <AM> <AL> <SIZ>  , siz <= 251. */
 				/* response : <SID + 0x40> <D0>....<Dn> <AH> <AM> <AL> */
 
@@ -39,7 +41,7 @@
 	#define SIDFL_EB	0x01	//erase block. format : <SID_FLASH> <SIDFL_EB> <BLOCK #>
 	#define SIDFL_WB	0x02	//write n-byte block. format : <SID_FLASH> <SIDFL_WB> <A2> <A1> <A0> <D0>...<D(SIDFL_WB_DLEN -1)> <CRC>
 						// Address is <A2 A1 A0>;   CRC is calculated on address + data.
-	#define SIDFL_WB_DLEN	128	//bytes per block
+	#define SIDFL_WB_DLEN	128	//bytes sent per niprog block
 
 /* SID_CONF and subcommands */
 #define SID_CONF 0xBE /* set & configure kernel */
@@ -54,6 +56,7 @@
 									* <SID_CONF> <SID_CONF_R16> <A2> <A1> <A0> */
 
 #define SID_FLREQ 0x34	/* RequestDownload */
+#define SID_STARTCOMM 0x81 /* startCommunication */
 
 #define SID_RESET 0x11	/* restart ECU */
 
