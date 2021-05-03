@@ -1000,12 +1000,25 @@ static const struct {
 	{PFWB_VERIFAIL, "post-write verify failed"},
 	{PFWB_MAXRET, "350nm: max # of rewrite attempts"},
 	{PF_ERROR, "350nm: generic flashing error : FWE, etc"},
+	{PF_FPFR_BADINIT, "180nm: initialization failed"},
+	{PF_FPFR_FQ, "180nm: Setting of operating freq abnormal"},
+	{PF_FPFR_UB, "180nm: user branch setting abnormal"},
+	{PF_ERROR_AFTERASE, "7051: err after erase"},
+	{PF_ERROR_B4WRITE, "7051: before write"},
+	{PF_ERROR_AFTWRITE, "7051: after write"},
+	{PF_ERROR_VERIF, "7051: verify"},
 	{SID34_BADFCCS, "180nm: bad FCCS"},
 	{SID34_BADRAMER, "180nm: bad RAMER"},
 	{SID34_BADDL_ERASE, "180nm: bad DL_ERASE"},
 	{SID34_BADDL_WRITE, "180nm: bad DL_WRITE"},
 	{SID34_BADINIT_ERASE, "180nm: bad INIT_ERASE"},
 	{SID34_BADINIT_WRITE, "180nm: bad INIT_WRITE"},
+	{SID34_BADINIT_TDER, "180nm: bad TDER"},
+	{SID34_BADINIT_FTDAR, "180nm: bad FTDAR"},
+	{SID34_DPFR_SF, "180nm: DPFR fail"},
+	{SID34_DPFR_FK, "180nm: flash key register error"},
+	{SID34_DPFR_SS, "180nm: source select error"},
+
 	{0, ""}
 };
 
