@@ -327,7 +327,7 @@ int sid36(uint8_t *buf, uint32_t len) {
 			return -1;
 		}
 
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 50);
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, rxbuf, 3, 50);
 		if (errval < 3) {
 			printf("no response @ blockno %X\n", (unsigned) blockno);
 			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
@@ -553,7 +553,7 @@ static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *
 		//responses :	01 <SID_CONF+0x40> <cks> for good CRC
 		//				03 7F <SID_CONF> <SID_CONF_CKS1_BADCKS> <cks> for bad CRC
 		// anything else is an error that causes abort
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 50);
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, rxbuf, 3, 50);
 		if (errval != 3) {
 			printf("\nno response @ chunk %X\n", (unsigned) chunko);
 			goto badexit;
@@ -563,7 +563,7 @@ static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *
 			continue;
 		}
 		//so, it's a 03 7F <SID_CONF> <NRC> <cks> response. Get remainder of packet
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf+3, 2, 50);
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, rxbuf+3, 2, 50);
 		if (errval != 2) {
 			printf("\nweirdness @ chunk %X\n", (unsigned) chunko);
 			goto badexit;
@@ -696,7 +696,7 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 
 		/* expect exactly 3 bytes, but with generous timeout */
 		//rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, rxbuf, 3, 800);
+		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, rxbuf, 3, 800);
 		if (errval <= 1) {
 			printf("\n\tProblem: no response @ %X\n", (unsigned) start);
 			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
@@ -716,7 +716,7 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 
 			int needed = 1 + rxbuf[0] - errval;
 			if (needed > 0) {
-				errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, NULL, &rxbuf[errval], needed, 300);
+				errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, &rxbuf[errval], needed, 300);
 			}
 			if (errval < 0) errval = 0;	//floor
 			printf("%s\n", decode_nrc(&rxbuf[1]));
