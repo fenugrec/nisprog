@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 		goto badexit;
 	}
 
-	printf("%s v%s-%s\n", NP_PROGNAME, NP_VERSION, GIT_REV);
+	printf("\n**************** %s v%s-%s ****************\n", NP_PROGNAME, NP_VERSION, GIT_REV);
 
 	enter_cli(NP_PROGNAME, startfile, np_cmdtable);
 
