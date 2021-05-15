@@ -973,7 +973,11 @@ const char *get_npk_id(void) {
 	}
 
 	idlen = rxmsg->len;
-	if (idlen <= 1) return NULL;
+	if ((idlen <= 1) ||
+		(idlen >= (sizeof(npk_id)))) {
+		printf("bad length %u for npk version string ! Old kernel maybe?\n", idlen);
+		return NULL;
+	}
 
 	memcpy(npk_id, rxmsg->data + 1, idlen - 1);	//skip 0x5A
 	npk_id[idlen]=0;	//null-terminate
