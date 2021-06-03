@@ -15,5 +15,5 @@ Any modifications to or **software including (via compiler) GPL-licensed code** 
 
 Commercial uses is possible, but **all code linked with GPL 3.0 source code must be disclosed under a GPL 3.0 compatible license.**
 
-If you find all or parts of **nisprog** useful, please consider a donation. Any amount is appreciated ! That is a great way to motivate me to continue adding to, and improving these tools.
-I may be reached @ fenugrec @ users.sourceforge.net or @ nisprog @ gmail
+If you find all or parts of **nisprog** useful, please consider supporting me via https://liberapay.com/fenugrec/ . Thanks!
+I can also be reached @ fenugrec @ users.sourceforge.net, or @ nisprog @ gmail
