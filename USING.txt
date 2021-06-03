@@ -1,5 +1,5 @@
 If you're having trouble reading this file or "nisprog.ini" (no newlines, etc) :
-try opening with another text editor (wordpad or whatever; notepad can't deal with this usually)
+try opening with a different text editor.
 
 I'm not going to write a nice manual for this, sorry.
 If you don't pay attention you can brick your ECU !
@@ -17,19 +17,17 @@ or
 
 ********************************
 **** command availability vs npkern
-The main idea is that some commands only work if the ECU is running npkern (see github.com/fenugrec/npkern ) :
+Some commands only work if the ECU is running npkern (see github.com/fenugrec/npkern ) :
 		flverif
 		flblock
 		flrom
-OTOH, "dumpmem" always works, but is way faster if npkern is running.
-
-For that, you'll need an npkern kernel (compiled of course, maybe npkern_7058.bin ). See "runkernel" command
+OTOH, "dumpmem" always works, but is way faster if npkern is running. See "runkernel" command.
 
 
 ********************************
 **** If you get in trouble (weird errors, etc)
 "debug l1 0x8c" will start showing all sent/received data which helps for tracking some issues.
-Just do "debug l1 0" to silence the extra output.
+To disable those messages, just do "debug l1 0"
 
 Try adjusting timings, etc. (see parameters for "npconf" command)
 
@@ -42,7 +40,7 @@ Filing issues on GitHub is ideal. Or you can post on the RomRaider forums.
 
 
 ********************************
-**** special "submenu" commands
+**** "submenu" commands
 some commands (like "set", "debug", etc) also act as submenus, i.e.
 
 ######
@@ -68,7 +66,6 @@ interface dumb
 port \\.\COM19
 dumbopts 0x48
 
-#sorry, you still need these
 l2protocol iso14230
 initmode fast
 testerid 0xfc
@@ -119,11 +116,13 @@ dm asdf.bin 0 256
 flverif patched_rom.bin
 
 
-#reflash !
+********************************
+**** reflashing !
+
 flrom whatever_rom.bin
+
 #nisprog will offer a few choices for reflashing; it can selectively reflash only the modified blocks.
-# i.e. a 7058 ROM is 1MB, but the 16 blocks are split non-uniformly.
-# ( they're called "erase blocks" in the ROM chapter of the datasheet )
+# i.e. a 7058 ROM is 1MB, split in 16 "erase blocks" of various sizes.
 # for example block 15 (0x0F) starts at offset 0x000E0000 in the ROM, and is 128kB in length.
 
 # It is normal for a flrom "dry run" to report write verification errors, since it does NOT modify the ECU.
