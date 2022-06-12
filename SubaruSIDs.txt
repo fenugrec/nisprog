@@ -1,0 +1,128 @@
+Notes on Operation of Serial Interface on Subaru ECU SH7058 in the ~2005 era
+
+Serial Channel 2 RX interrupt (RXI2) triggers ECU message handling subroutines
+Serial Channel 2 settings (SMR2) are asynchronous, 8 bit data, parity bit not added or checked, even parity, one stop bit, multiprocessor function disabled, source clock is peripheral clock (20 MHz)
+Serial Channel 2 settings (SDCR2) are LSB-first order
+Serial Channel 2 settings (BRR) takes two values, SSM commands and SIDs 0x81 0x83 0x27 and 0x10 use 4,800 bit/s. SIDs 0x34 0x36 and 0x31 use 15,625 bit/s.
+Communications Protocol is very similar to ISO-14230, but not exactly the same. For example, the Subaru protocol only works with 4 byte headers.
+
+Supported SSM commands are already described here: https://romraider.com/index.php/RomRaider/SsmProtocol
+
+Supported UDS commands (SIDs) are:
+  0x81 (startCommunication)
+	0x83 (accessTimingParameters)
+	0x27 (securityAccess)
+  0x10 (startDiagnosticSession)
+	0x34 (requestDownload)
+	0x36 (transferData)
+	0x31 (startRoutineByLocalIdentifier)
+
+Valid UDS Request Header is:
+	Format: 0x80 (with address information, separate length byte required)
+	Source: 0x10 (ECU) or 0x12 (Unknown)
+	Target: 0xF0 (Diagnostic Tool)
+	Length Byte
+
+Valid UDS Request is:
+	4 byte Header (as above)
+	SID
+	Data other than SID
+	Checksum (simple 8-bit sum) – denoted as CS
+
+SID 0x81 (startCommunication):
+	Valid Request: 0x80 0x10 0xF0 0x01 0x81 0xCS
+	Positive Response: 0x80 0xF0 0x10 0x03 0xC1 0xEF 0x8F 0xCS (key bytes suggest both length modes possible, both header types possible… although the code seems to allow only 4 byte headers)
+	Negative Response: 0x80 0xF0 0x10 0x03 0x7F 0x10 0xCS
+
+SID 0x83 (accessTimingParameters):
+	Valid Request: 0x80 0x10 0xF0 0x02 0x83 0x00 0xCS (read Timing Parameters)
+	Positive Response: 0x80 0xF0 0x10 0x07 0xC3 0x00 0x00 0xFF 0x00 0xFF 0x00 0xCS (P2Min = 0, P2Max = 0xFF, P3Min = 0x00, P3Max = 0xFF, P4Min = 0)
+	Negative Response: 0x80 0xF0 0x10 0x03 0x7F 0x10 0xCS
+
+SID 0x27 (securityAccess):
+  Step 1
+  Valid Request: 0x80 0x10 0xF0 0x02 0x27 0x01 0xCS (request Seed)
+	Positive Response: 0x80 0xF0 0x10 0x06 0x67 0x01 0xS4 0xS3 0xS2 0xS1 0xCS (S4 S3 S2 S1 are the 4 bytes of the Seed)
+	Negative Response: 0x80 0xF0 0x10 0x03 0x7F 0x27 0x01 0xCS
+
+	Step 2
+	Valid Request: 0x80 0x10 0xF0 0x06 0x27 0x02 0xK4 0xK3 0xK2 0xK1 0xCS (K4 K3 K2 K1 are the 4 bytes of the Key)
+	Positive Response: 0x80 0xF0 0x10 0x03 0x67 0x02 0x34 0xCS
+	Negative Response: 0x80 0xF0 0x10 0x03 0x7F 0x27 0x02 0xCS
+
+  Notes:
+	Step 2 requires SID 0x81 to have preceded it. If a valid seed/key exchange occurs without SID 0x81 having preceded it, a different logic path is followed.
+	Seed is generated as per the following…
+        	Seed_0 = TCNT0H value at the time (4 byte). Note that this is the Key that will be required to be provided in the Step 2 SID 0x27 request.
+        	Seed_0 is split into [SeedTop2Bytes_0][SeedBottom2Bytes_0]
+        	SeedBottom2Bytes_0 is used to generate EncryptionKey_0 (2 bytes)
+        	EncryptionKey_0 is used to encrypt SeedTop2Bytes_0 using XOR encryption
+        	Seed_1 is then the composite of [SeedBottom2Bytes_0][EncryptedSeedTop2Bytes_0]. This means each version of the Seed contains the information in the top 2 bytes to generate the key which encrypted the bottom 2 bytes, thereby allowing each Seed to be decrypted
+        	The above is repeated 16 times to ultimately produce Seed_15. Below ‘i’ is used to denote the step count from 0 to 15.
+        	As a final step, the top 2 bytes of Seed_15 are swapped with the bottom 2 bytes. This is the Seed that the ECU publishes which is [EncryptedSeedTop2Bytes_15][SeedBottom2Bytes_15].
+        	The encryption of SeedTop2Bytes is done using EncryptionKey_i (not to be confused with the SID 0x27 Key). EncryptionKey_i is generated as follows:
+                	IndexKeyBase_i (2 bytes) is determined from a Table of 16 x 2 byte values
+                	IndexBase_i (2 bytes) = SeedBottom2Bytes_i XOR IndexKeyBase_i 
+                	IndexBase_i is cut into 4 groups of 5 bits to provide indexes (from 0 to 31) into KeyPartsTable, which is a table of 32 x 1 byte values. Each 1 byte value in the Table has 0 in the top 4 bits (so the values range from 0x0 to 0xF)
+                	The groups of 5 bits are:
+                        	BitGroup_i_0: Bits 4 to 0
+                        	BitGroup_i_1: Bits 8 to 4
+                        	BitGroup_i_2: Bits 12 to 8
+                        	BitGroup_i_3: Bits 16 to 12 (where ‘Bit 16’ is Bit 0)
+                	KeyPart_i_j is looked up from KeyPartsTable using BitGroup_i_j
+                	The parts of the key are then combined into KeyPartsCombined_i, which is a 2 byte value equal to [KeyPart_ i_3][KeyPart_ i_2][KeyPart_ i_1][KeyPart_ i_0]
+                	EncryptionKey_i is then derived from a 3 bit barrel roll to the right of KeyPartsCombined_i
+        	Because each version of Seed_i contains the encrypted information plus the encryption key, the process can be reversed to calculate the original value of TCNT0H, which is the SID 0x27 Key. This Key is generated from the Seed by reversing the above process to get back to the TCNT0H value, as follows:
+                	XOR decryption is achieved by performing another XOR with the encryption key. 
+                	Because Seed_15 was flipped as a final step, the Seed is already set up so that bottom 2 bytes can be used to find the encryption key that encrypted the top 2 bytes. Therefore, the same algorithm as above can be used to decrypt the Seed back to the Key.
+                	The only difference is that IndexKeyBase_i has to be applied in reverse order (ie: i varies from 15 to 0) to progressively reverse the encryption.
+                	As the final step, the top 2 bytes are swapped with the bottom 2 bytes to generate the Key
+        	Only two attempts at entering the Key are permitted, ECU waits 10 seconds before another attempt allowed
+        	If security access has already been granted, then the Seed reported is 0x00 0x00 0x00 0x00
+
+SID 0x10 (startDiagnostic Session)
+	Valid Request: 0x80 0x10 0xF0 0x02 0x10 0x85 0x02 0xCS (programming session)
+	Positive Response: 0x80 0xF0 0x10 0x02 0x50 0x85 0xCS
+	Negative Response: 0x80 0xF0 0x10 0x03 0x7F 0x10 0x85 0xCS
+
+  Notes:
+	Positive response requires SID 0x81 and successful 0x27 to have preceded it 
+	After the positive response is TX’d, execution jumps high up in the ROM into another area
+	The following occurs:
+        	An alternate VBR is loaded into the VBR
+        	Internal Clock Frequency is set to 4 x input clock frequency
+        	Watchdog timer is set up in Interval Timer Mode to generate ITI upon overflow
+        	Watchdog clock is set up to reach overflow every 6.6ms
+        	SCI2 is initialised (asynchronous mode, eight bit data, parity bit not added or checked, even parity, one stop bit, multiprocessor function disabled,  baud rate is set to peripheral clock (n = 0)) and set up as a receiver, BRR set to 15,625 bit/s, TX/RX in LSB-first order
+        	Then a loop is entered that checks for WDT overflow and RXs 1 byte at a time on SCI2
+
+SID 0x34 (requestDownload)
+	Must be preceded by valid SID 0x10 (startDiagnosticSession)
+	Valid Request: 0x80 0x10 0xF0 0x08 0x34 0xMAH 0xMAM 0xMAL 0x04 0xMSH 0xMSM 0xMSL 0xCS (MA = memory address, MS = memory size, H M L = high medium low, dataFormatIdentifier of 0x04 means uncompressed and vehicle specific encrypted)
+	Positive Response: 0x80 0xF0 0x10 0x02 0x74 0x84 0xCS (0x84 means max of 132 bytes in each dataTransfer)
+	Negative Response: 0x80 0xF0 0x10 0x03 0x7F 0x34 0x10 0xCS
+
+  Notes:
+  Memory address must be >= 0xFFFF3000 and Memory address + Memory size <= 0xFFFF4FFFF
+                
+SID 0x36 (transferData)
+	Must be preceded by valid SID 0x10 (startDiagnosticSession)
+	Valid Request: 0x80 0x10 0xF0 0xLL 0x36 0xAA1 0xAA2 0xAA3 0xDD1 0xDD2 0xDD3 0xDD4 … 0xCS (LL = length, AA = address to transfer to is 0xFF[AA1][AA2][AA3], DD = encrypted data to transfer with value 0x[DD1][DD2][DD3][DD4])
+	Positive Response: 0x80 0xF0 0x10 0x01 0x76 0xCS
+	Negative Response: 0x80 0xF0 0x10 0x02 0x7F 0x36 0xCS
+	
+  Notes:
+  The data needs to be encrypted using exactly the same algorithm as described above for SID 0x27 Seed/Key, with two differences:
+  The outer loop is performed only 4 times (not 16) – so only 4 IndexKeyBase_i
+  A different Table of IndexKeyBase_i is used
+
+SID 0x31 (startRoutineByLocalIdentifier)
+  Must be preceded by valid SID 0x10 (startDiagnosticSession)
+	Valid Request: 0x80 0x10 0xF0 0x03 0x31 0x01 0x01 0xCS (routineLocalIdentifier = 1, routineLocalEntry = 1)
+	Positive Response: 0x80 0xF0 0x10 0x03 0x71 0x01 0x01 0xCS
+	Negative Response: 0x80 0xF0 0x10 0x03 0x7F 0x31 0xCS
+
+  Notes:
+  Checksum across addresses from immediately prior Cmd 0x34 must add to 0x5AA5
+  Program execution jumps to function at 0xFFFF3004
+  
