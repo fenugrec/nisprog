@@ -115,6 +115,8 @@ badexit:
 
 const struct cmd_tbl_entry np_cmdtable[]=
 {
+	{ "spconn", "spconn", "Connect to Subaru ECU with current parameters",
+			cmd_spconn, 0, NULL},
 	{ "npconn", "npconn", "Connect to ECU with current parameters",
 			cmd_npconn, 0, NULL},
 	{ "nc", "nc", "Connect to ECU with current parameters",
@@ -134,6 +136,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_setkeys, 0, NULL},
 	{ "kspeed", "kspeed <new_speed>", "Change kernel comms speed and reinitialize kernel; Recommended <new_speed> values: 62500, 31250, 25000.",
 			cmd_kspeed, 0, NULL},
+	{ "sprunkernel", "sprunkernel <file>", "Send + run specified kernel",
+			cmd_sprunkernel, 0, NULL},
 	{ "runkernel", "runkernel <file>", "Send + run specified kernel",
 			cmd_runkernel, 0, NULL},
 	{ "stopkernel", "stopkernel", "Disconnects + resets the ECU to exit kernel",
