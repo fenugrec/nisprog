@@ -438,6 +438,123 @@ int cmd_npconn(int argc, char **argv) {
 }
 
 
+int cmd_spconn(int argc, char **argv) {
+	(void) argv;
+	if (argc > 1) return CMD_USAGE;
+
+	if ((npstate != NP_DISC) ||
+		(global_state != STATE_IDLE)) {
+		printf("Error : already connected\n");
+		return CMD_FAILED;
+	}
+
+	nisecu_cleardata(&nisecu);
+
+	struct diag_l2_conn *d_conn;
+	struct diag_l0_device *dl0d = global_dl0d;
+	int i, rv;
+	flag_type flags = 0;
+	struct diag_l2_14230 *dp;
+	const struct diag_l2_proto *dl2p;
+
+	if (!dl0d) {
+		printf("No global L0. Please select + configure L0 first\n");
+		return CMD_FAILED;
+	}
+
+	if (global_cfg.L2proto != DIAG_L2_PROT_RAW) {
+		printf("L2 protocol must start as RAW to communicate with Subaru ECU ! try \"set l2protocol\"\n");
+		return CMD_FAILED;
+	}
+
+	/* Open interface using current L1 proto and hardware */
+	rv = diag_l2_open(dl0d, global_cfg.L1proto);
+	if (rv) {
+		fprintf(stderr, "Open failed for protocol %d on %s\n",
+			global_cfg.L1proto, dl0d->dl0->shortname);
+		return CMD_FAILED;
+	}
+
+	if (global_cfg.addrtype)
+		flags = DIAG_L2_TYPE_FUNCADDR;
+	else
+		flags = 0;
+
+	flags |= (global_cfg.initmode & DIAG_L2_TYPE_INITMASK) ;
+
+	d_conn = diag_l2_StartCommunications(dl0d, global_cfg.L2proto,
+		flags, global_cfg.speed, global_cfg.tgt, global_cfg.src);
+
+	if (d_conn == NULL) {
+		rv=diag_geterr();
+		diag_l2_close(dl0d);
+		printf("L2 StartComms failed\n");
+		return CMD_FAILED;
+	}
+	
+	//At this point we have a valid RAW connection and need to update d_conn manually to change to ISO14230 with Subaru headers, checksum
+	//The general initialisation would have set d_conn->diag_link, ->l2proto, ->diag_l2_type, ->diag_l2_srcaddr, ->diag_l2_destaddr,
+	//->diag_l2_p1 2 2e 3 4 min max, ->tinterval, ->tlast, ->diag_l2_state
+	//The RAW initialisation would have set diag_serial_settings and d_conn->diag_l2_destaddr and ->diag_l2_srcaddr 
+	
+	printf("L2 RAW detected, changing to L2 ISO14230\n");
+
+	global_cfg.L2proto = DIAG_L2_PROT_ISO14230;
+			
+	for (i=0; l2proto_list[i] ; i++) {
+		dl2p = l2proto_list[i];	
+		if (dl2p->diag_l2_protocol == global_cfg.L2proto) {
+			d_conn->l2proto = dl2p;
+			break;
+		}
+	}		
+
+	rv = diag_calloc(&dp, 1);
+	if (rv != 0) return CMD_FAILED;			
+
+	d_conn->diag_l2_proto_data = (void *)dp;
+
+	dp->srcaddr = global_cfg.src;
+	dp->dstaddr = global_cfg.tgt;
+	dp->first_frame = 0;
+	dp->monitor_mode = 0;
+	d_conn->diag_l2_kb1 = 0x8F;
+	d_conn->diag_l2_kb2 = 0xEA; //length byte required, address bytes required (ie) 4 byte headers
+	d_conn->diag_l2_physaddr = global_cfg.src;
+	dp->state = STATE_ESTABLISHED;
+	dp->modeflags = 6; //length byte required, address bytes required (ie) 4 byte headers
+	printf("Change to ISO14230 successful\n");
+
+	global_l2_conn = d_conn;
+	global_state = STATE_CONNECTED;
+	npstate = NP_NORMALCONN;
+
+	update_params();
+
+	if(sub_sid81_startcomms()){
+		printf("SID 0x81 startCommunications failed. Verify settings, connection mode etc.\n");
+		global_l2_conn = NULL;
+		global_state = STATE_IDLE;
+		npstate = NP_DISC;
+		return CMD_FAILED;
+	}
+
+	/* Connected ! */
+
+	printf("\nConnected to ECU and ready for SSM or SID Commands\n");
+
+	if (sub_get_ecuid(nisecu.ecuid)) {
+		printf("Couldn't get ECUID ? Verify settings, connection mode etc.\n");
+		return CMD_FAILED;
+	}
+	printf("\nECUID: ");
+	for (i=0; i < 5; i++) printf("%02x ", nisecu.ecuid[i]);
+	printf("\n");
+	
+	return CMD_OK;
+}
+
+
 int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
 	if ((npstate == NP_DISC) ||
 		(global_state == STATE_IDLE)) {
@@ -983,6 +1100,25 @@ static uint16_t encrypt_buf(uint8_t *buf, uint32_t len, uint32_t key) {
 }
 
 
+/** For Subaru, encrypt buffer in-place
+ * @param len (count in bytes) is trimmed to align on 4-byte boundary, i.e. len=7 => len =4
+ *
+ * @return 16-bit checksum of buffer prior to encryption
+ *
+ */
+void sub_encrypt_buf(uint8_t *buf, uint32_t len) {
+	if (!buf || !len) return;
+
+	len &= ~3;
+	for (; len > 0; len -= 4) {
+		uint8_t tempbuf[4];
+		memcpy(tempbuf, buf, 4);
+		sub_encrypt(tempbuf, buf);
+		buf += 4;
+	}
+}
+
+
 /** search for the given sid27 key in the known keysets;
  * if found, update the keyset.
  *
@@ -1084,6 +1220,158 @@ guesskey_found:
 				return CMD_OK;
 }
 
+
+
+#define KERNEL_MAXSIZE_SUB 8*1024U	//Subaru requires it to fit between 0xFFFF3000 and 0xFFFF5000
+
+/* Does a complete SID 27 + 34 + 36 + 31 sequence to run the given kernel payload file.
+ * Pads the input payload up to multiple of 4 bytes to make SID36 happy
+ */
+int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
+	uint32_t file_len;
+	uint32_t pl_len;
+	FILE *fpl;
+	uint8_t *pl_encr;	//encrypted payload buffer
+	uint8_t cks_bypass[4] = { 0x00, 0x00, 0x5A, 0xA5 };  //required checksum
+	struct diag_serial_settings set;
+	int errval;
+
+	if (npstate != NP_NORMALCONN) {
+		printf("Must be connected normally (nc command) !\n");
+		return CMD_FAILED;
+	}
+
+	if ((fpl = fopen(argv[1], "rb"))==NULL) {
+		printf("Cannot open %s !\n", argv[1]);
+		return CMD_FAILED;
+	}
+
+	file_len = flen(fpl);
+	/* pad up to next multiple of 4 */
+	pl_len = (file_len + 3) & ~3;
+	printf("File Len %d Payload Len %d\n", file_len, pl_len);
+
+	if (pl_len >= KERNEL_MAXSIZE_SUB) {
+		printf(	"***************** warning : large kernel detected *****************\n"
+				"That file seems way too big (%lu bytes) to be a typical kernel.\n"
+				"Trying anyway, but you might be using an invalid/corrupt file", (unsigned long) pl_len);
+	}
+
+	if (diag_malloc(&pl_encr, pl_len)) {
+		printf("malloc prob\n");
+		fclose(fpl);
+		return CMD_FAILED;
+	}
+
+	if (fread(pl_encr, 1, file_len, fpl) != file_len) {
+		printf("fread prob, file_len=%u\n", file_len);
+		free(pl_encr);
+		fclose(fpl);
+		return CMD_FAILED;
+	}
+
+	if (file_len != pl_len) {
+		printf("Using %u byte payload, padding with garbage to %u (0x0%X) bytes.\n", file_len, pl_len, pl_len);
+	} else {
+		printf("Using %u (0x0%X) byte payload.\n", file_len, file_len);
+	}
+
+	/* sid27 securityAccess */
+	if (sub_sid27_unlock()) {
+		printf("\nsid27 problem\n");
+		goto badexit;
+	}
+	printf("\nsid27 done.\n");
+
+	/* sid10 diagnosticSession */
+	if (sub_sid10_diagsession()) {
+		printf("\nsid10 problem\n");
+		goto badexit;
+	}
+	printf("\nsid10 done.\n");
+
+	// change speed to match Subaru BRR settings N = 29, so speed = 15,625 bit/s
+	set.speed = 15625;
+	set.databits = diag_databits_8;
+	set.stopbits = diag_stopbits_1;
+	set.parflag = diag_par_n;
+
+	update_params();
+
+	errval=diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_SETSPEED, (void *) &set);
+	if (errval) {
+		printf("\nsprunkernel: could not setspeed\n");
+		return -1;
+	}
+
+	/* sid34 requestDownload */
+	if (sub_sid34_reqdownload(0xFF3000, pl_len)) {
+		printf("\nsid34 problem for payload\n");
+		goto badexit;
+	}
+	printf("\nsid34 done for payload.\n");
+
+	/* encrypt payload */
+	sub_encrypt_buf(pl_encr, (uint32_t) pl_len);
+
+	/* sid36 transferData for payload */
+	if (sub_sid36_transferdata(0xFF3000, pl_encr, (uint32_t) pl_len)) {
+		printf("\nsid 36 problem for payload\n");
+		goto badexit;
+	}
+	printf("sid36 done for payload.\n");
+
+	/* sid34 requestDownload - checksum bypass put just after payload */
+	if (sub_sid34_reqdownload((uint32_t) (0xFF3000 + pl_len), 4)) {
+		printf("\nsid34 problem for checksum bypass\n");
+		goto badexit;
+	}
+	printf("\nsid34 done for checksum bypass.\n");
+
+	sub_encrypt_buf(cks_bypass, (uint32_t) 4);
+
+	/* sid36 transferData for checksum bypass */
+	if (sub_sid36_transferdata((uint32_t) (0xFF3000 + pl_len), cks_bypass, (uint32_t) 4)) {
+		printf("\nsid 36 problem for checksum bypass\n");
+		goto badexit;
+	}
+	printf("sid36 done for checksum bypass.\n");
+
+	/* SID 37 TransferExit does not exist on all Subaru ROMs */
+
+	/* RAMjump ! */
+	if (sub_sid31_startRoutine()) {
+		printf("sid 31 problem\n");
+		goto badexit;
+	}
+
+	free(pl_encr);
+	fclose(fpl);
+
+	printf("SID 31 done.\nECU now running from RAM ! Disabling periodic keepalive;\n");
+
+	if (npkern_init()) {
+		printf("Problem starting kernel; try to disconnect + set speed + connect again.\n");
+		return CMD_FAILED;
+	}
+
+	const char *npk_id;
+	npk_id = get_npk_id();
+	if (npk_id) {
+		printf("Connected to kernel: %s\n", npk_id);
+	}
+
+	printf("You may now use kernel-specific commands.\n");
+	npstate = NP_NPKCONN;
+
+	return CMD_OK;
+
+badexit:
+	free(pl_encr);
+	fclose(fpl);
+	return CMD_FAILED;
+
+}
 
 
 #define KERNEL_MAXSIZE 10*1024U	//warn for kernels larger than this
