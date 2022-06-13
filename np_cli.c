@@ -27,7 +27,7 @@
 #include "scantool_cli.h"
 
 #include "nisprog.h"
-#include "np_backend.h"
+#include "nis_backend.h"
 #include "npk_backend.h"
 #include "ssm_backend.h"
 #include "nissutils/cli_utils/nislib.h"

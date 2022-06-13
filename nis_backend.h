@@ -1,5 +1,5 @@
-#ifndef _NP_BACKEND_H
-#define _NP_BACKEND_H
+#ifndef NIS_BACKEND_H
+#define NIS_BACKEND_H
 
 /* back-end functions used by CLI commands, for Nissan ECUs
  */

@@ -20,10 +20,10 @@
 #include "diag_iso14230.h"	//for NRC decoding
 
 #include "nisprog.h"
-#include "np_backend.h"
+#include "nis_backend.h"
 #include "nissutils/cli_utils/nislib.h"
 
-#define CURFILE "np_backend.c"	//HAAAX
+#define CURFILE "nis_backend.c"	//HAAAX
 
 
 /** Decode negative response code into a short error string.
