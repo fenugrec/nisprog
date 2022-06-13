@@ -85,10 +85,10 @@ const struct flashblock fblocks_7051[] = {
 };
 
 const struct flashdev_t flashdevices[] = {
-	{ "7051", 256 * 1024, 12, fblocks_7051 },
-	{ "7055", 512 * 1024, 16, fblocks_7055 },
-	{ "7058", 1024 * 1024, 16, fblocks_7058 },
-	{ NULL, 0, 0, NULL },
+	{ "7051", SH7051, 256 * 1024, 12, fblocks_7051 },
+	{ "7055", SH7055, 512 * 1024, 16, fblocks_7055 },
+	{ "7058", SH7058, 1024 * 1024, 16, fblocks_7058 },
+	{ NULL, SH_INVALID, 0, 0, NULL },
 };
 
 

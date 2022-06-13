@@ -12,8 +12,17 @@
  */
 
 
-/** defs for SH705x flash block areas
+/** defs for SH705x device types and flash block areas
  */
+
+enum mcu_type {
+	SH_INVALID,
+	SH7051,
+	SH7055,		//for the purpose of flash block areas, the 180 and 350nm versions of SH7055 are identical
+	//SH7055_35,
+	//SH7055_18,
+	SH7058
+};
 
 struct flashblock {
 	uint32_t start;
@@ -22,6 +31,7 @@ struct flashblock {
 
 struct flashdev_t {
 	const char *name;		// like "7058", for UI convenience only
+	enum mcu_type mctype;
 
 	const uint32_t romsize;		//in bytes
 	const unsigned numblocks;
