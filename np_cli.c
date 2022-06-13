@@ -28,6 +28,7 @@
 
 #include "nisprog.h"
 #include "np_backend.h"
+#include "ssm_backend.h"
 #include "nissutils/cli_utils/nislib.h"
 #include "nissutils/cli_utils/ecuid_list.h"
 #include "npkern/iso_cmds.h"
