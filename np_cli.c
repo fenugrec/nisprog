@@ -1224,20 +1224,36 @@ guesskey_found:
 
 
 
-#define KERNEL_MAXSIZE_SUB 8*1024U	//Subaru requires it to fit between 0xFFFF3000 and 0xFFFF5000
+#define KERNEL_MAXSIZE_SUB 8*1024U	//For SH7058, Subaru requires it to fit between 0xFFFF3000 and 0xFFFF5000
 
 /* Does a complete SID 27 + 34 + 36 + 31 sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 4 bytes to make SID36 happy
  */
 int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
-	uint32_t file_len;
-	uint32_t pl_len;
+	uint32_t file_len, pl_len, load_addr;
 	FILE *fpl;
 	uint8_t *pl_encr;	//encrypted payload buffer
 	uint8_t cks_bypass[4] = { 0x00, 0x00, 0x5A, 0xA5 };  //required checksum
 	struct diag_serial_settings set;
 	int errval;
 
+	const struct flashdev_t *fdt = nisecu.flashdev;
+	if (!fdt) {
+		printf("device type not set. Try \"setdev ?\"\n");
+		return CMD_FAILED;
+	}
+	switch (fdt->mctype) {
+		case SH7055:
+			load_addr = 0xFFFF6000;
+			break;
+		case SH7058:
+			load_addr = 0xFFFF3000;
+			break;
+		default:
+			printf("For Subaru, kernel load and run only supported for SH7055S or SH7058\n");
+			return CMD_FAILED;
+	}
+		
 	if (npstate != NP_NORMALCONN) {
 		printf("Must be connected normally (nc command) !\n");
 		return CMD_FAILED;
@@ -1307,7 +1323,7 @@ int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
 	}
 
 	/* sid34 requestDownload */
-	if (sub_sid34_reqdownload(0xFF3000, pl_len)) {
+	if (sub_sid34_reqdownload(load_addr, pl_len)) {
 		printf("\nsid34 problem for payload\n");
 		goto badexit;
 	}
@@ -1317,14 +1333,14 @@ int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
 	sub_encrypt_buf(pl_encr, (uint32_t) pl_len);
 
 	/* sid36 transferData for payload */
-	if (sub_sid36_transferdata(0xFF3000, pl_encr, (uint32_t) pl_len)) {
+	if (sub_sid36_transferdata(load_addr, pl_encr, (uint32_t) pl_len)) {
 		printf("\nsid 36 problem for payload\n");
 		goto badexit;
 	}
 	printf("sid36 done for payload.\n");
 
 	/* sid34 requestDownload - checksum bypass put just after payload */
-	if (sub_sid34_reqdownload((uint32_t) (0xFF3000 + pl_len), 4)) {
+	if (sub_sid34_reqdownload((uint32_t) (load_addr + pl_len), 4)) {
 		printf("\nsid34 problem for checksum bypass\n");
 		goto badexit;
 	}
@@ -1333,7 +1349,7 @@ int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
 	sub_encrypt_buf(cks_bypass, (uint32_t) 4);
 
 	/* sid36 transferData for checksum bypass */
-	if (sub_sid36_transferdata((uint32_t) (0xFF3000 + pl_len), cks_bypass, (uint32_t) 4)) {
+	if (sub_sid36_transferdata((uint32_t) (load_addr + pl_len), cks_bypass, (uint32_t) 4)) {
 		printf("\nsid 36 problem for checksum bypass\n");
 		goto badexit;
 	}
