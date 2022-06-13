@@ -1,7 +1,10 @@
 #ifndef _NP_BACKEND_H
 #define _NP_BACKEND_H
 
-#include <stdbool.h>
+/* back-end functions used by CLI commands, for Nissan ECUs
+ */
+
+
 #include <stdint.h>
 
 /* *******
@@ -68,75 +71,5 @@ int sid37(uint16_t cks);
  */
 int sidBF(void);
 
-
-/** defs for SH705x flash block areas
- */
-
-struct flashblock {
-	uint32_t start;
-	uint32_t len;
-};
-
-struct flashdev_t {
-	const char *name;		// like "7058", for UI convenience only
-
-	const uint32_t romsize;		//in bytes
-	const unsigned numblocks;
-	const struct flashblock *fblocks;
-};
-
-
-/* list of all defined flash devices */
-extern const struct flashdev_t flashdevices[];
-
-
-/** load ROM with expected size.
- *
- * @return if success: new buffer to be free'd by caller
- */
-uint8_t *load_rom(const char *fname, uint32_t expect_size);
-
-/** determine which flashblocks are different :
- * @param src: new ROM data
- * @param orig_data: optional, if specified : compared against *src
- * @param modified: (caller-provided) bool array where comparison results are stored
- *
- *
- * return 0 if comparison completed ok
- */
-int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struct flashdev_t *fdt, bool *modified);
-
-
-/** reflash a single block.
- * @param newdata : data for the block of interest (not whole ROM)
- * @param practice : if 1, ROM will not be modified
- * ret 0 if ok
- */
-int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned blockno, bool practice);
-
-
-/** set eeprom eep_read() function address
- * return 0 if ok
- */
-int set_eepr_addr(uint32_t addr);
-
-/** set kernel comms speed. Caller must then re-send StartComms
- * ret 0 if ok
- */
-int set_kernel_speed(uint16_t kspeed);
-
-
-/** Get npkern ID string
- *
- * caller must not free() the string !
- */
-const char *get_npk_id(void);
-
-/** Decode negative response code into a short error string.
- *
- * rxdata[] must contain at least 3 bytes, "7F <SID> <NRC>"
- * returns a static char * that must not be free'd !
- */
-const char *decode_nrc(uint8_t *rxdata);
 
 #endif

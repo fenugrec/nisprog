@@ -17,10 +17,8 @@
 
 //#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "diag.h"
-#include "diag_os.h"
 #include "scantool_cli.h"
 
 #include "nisprog.h"
@@ -136,9 +134,9 @@ const struct cmd_tbl_entry np_cmdtable[]=
 			cmd_setkeys, 0, NULL},
 	{ "kspeed", "kspeed <new_speed>", "Change kernel comms speed and reinitialize kernel; Recommended <new_speed> values: 62500, 31250, 25000.",
 			cmd_kspeed, 0, NULL},
-	{ "sprunkernel", "sprunkernel <file>", "Send + run specified kernel",
+	{ "sprunkernel", "sprunkernel <file>", "Send + run specified kernel [Subaru]",
 			cmd_sprunkernel, 0, NULL},
-	{ "runkernel", "runkernel <file>", "Send + run specified kernel",
+	{ "runkernel", "runkernel <file>", "Send + run specified kernel [Nissan]",
 			cmd_runkernel, 0, NULL},
 	{ "stopkernel", "stopkernel", "Disconnects + resets the ECU to exit kernel",
 			cmd_stopkernel, 0, NULL},

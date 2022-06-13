@@ -89,7 +89,7 @@ ADD_CUSTOM_COMMAND(
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/gitversion.cmake
 	)
 
-set (NISPROG_SRCS nisprog.c np_cli.c np_backend.c ssm_backend.c
+set (NISPROG_SRCS nisprog.c np_cli.c np_backend.c npk_backend.c ssm_backend.c
 			scantool_bits.c
 			nissutils/cli_utils/nislib.c nissutils/cli_utils/ecuid_list.c
 			${CMAKE_CURRENT_BINARY_DIR}/version.c

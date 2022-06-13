@@ -8,16 +8,16 @@
  */
 
 
-#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "stypes.h"
 
 #include "diag.h"
-#include "diag_err.h"
+#include "diag_l0.h"
 #include "diag_l1.h"
 #include "diag_l2.h"
 #include "diag_os.h"
@@ -28,6 +28,7 @@
 
 #include "nisprog.h"
 #include "np_backend.h"
+#include "npk_backend.h"
 #include "ssm_backend.h"
 #include "nissutils/cli_utils/nislib.h"
 #include "nissutils/cli_utils/ecuid_list.h"
