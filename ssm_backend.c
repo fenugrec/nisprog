@@ -33,6 +33,8 @@
  */
 static const char *decode_nrc(uint8_t *rxdata);
 
+static void sub_genkey(const uint8_t *seed8, uint8_t *key);
+
 
 /*
  * For Subaru, get the ECU ID via SSM A8 command.
@@ -193,7 +195,7 @@ int sub_sid27_unlock(){
 /** For Subaru, generates key from seed
  * writes 4 bytes in buffer *key
  */
-void sub_genkey(const uint8_t *seed8, uint8_t *key) {
+static void sub_genkey(const uint8_t *seed8, uint8_t *key) {
 	uint32_t seed, index;
 	uint16_t wordtogenerateindex, wordtobeencrypted, encryptionkey;
 	int ki, n;

@@ -34,14 +34,6 @@ int sub_sid81_startcomms(void);
 int sub_sid27_unlock(void);
 
 
-/** Subaru generates key from seed
- *
- *
- * Returns 4 bytes in buffer *key
- */
-void sub_genkey(const uint8_t *seed8, uint8_t *key);
-
-
 /** For Subaru, encrypts data for upload
  * writes 4 bytes in buffer *encrypteddata
  */
