@@ -16,12 +16,12 @@
  */
 
 enum mcu_type {
-	SH_INVALID,
 	SH7051,
 	SH7055,		//for the purpose of flash block areas, the 180 and 350nm versions of SH7055 are identical
 	//SH7055_35,
 	//SH7055_18,
-	SH7058
+	SH7058,
+	SH_INVALID
 };
 
 struct flashblock {
