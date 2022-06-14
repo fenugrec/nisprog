@@ -98,6 +98,7 @@ int get_ecuid(u8 *dest) {
 
 	if (npstate == NP_DISC) {
 		printf("Not connected to ECU\nTry \"nc\" first\n");
+		return -1;
 	}
 
 	nisreq.data=txdata;	//super very essential !
