@@ -428,7 +428,7 @@ int sub_sid31_startRoutine() {
 
 	txdata[0]=0x31;
 	txdata[1]=0x01;
-	txdata[2]=0x01; // this should be 0x01 - intentionally wrong so ECU doesn't do jump
+	txdata[2]=0x01; 
 	nisreq.len=3;
 	nisreq.data=txdata;
 
