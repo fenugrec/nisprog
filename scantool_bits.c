@@ -6,48 +6,52 @@
 #include "diag_l2.h"
 #include "scantool_cli.h"
 
-#define RQST_HANDLE_WATCH	1	/* Watching, add timestamp */
-#define RQST_HANDLE_DECODE	2	/* Just decode what arrived */
+#define RQST_HANDLE_WATCH   1   /* Watching, add timestamp */
+#define RQST_HANDLE_DECODE  2   /* Just decode what arrived */
 const int _RQST_HANDLE_WATCH = RQST_HANDLE_WATCH;  //Watching: add timestamp
-const int _RQST_HANDLE_DECODE = RQST_HANDLE_DECODE; 	//Just decode what arrived
+const int _RQST_HANDLE_DECODE = RQST_HANDLE_DECODE;     //Just decode what arrived
 
 /* garbage to make freediag cli compile */
 const struct cmd_tbl_entry test_cmd_table[] = {
 	{ "up", "up", "Return to previous menu level",
-		cmd_up, 0, NULL},
+	  cmd_up, 0, NULL},
 	{ "quit","quit", "Exit program",
-		cmd_exit, FLAG_HIDDEN, NULL},
+	  cmd_exit, FLAG_HIDDEN, NULL},
 	{ "exit", "exit", "Exit program",
-		cmd_exit, 0, NULL},
-	{ NULL, NULL, NULL, NULL, 0, NULL}};
+	  cmd_exit, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}
+};
 
 const struct cmd_tbl_entry vag_cmd_table[] = {
 	{ "up", "up", "Return to previous menu level",
-		cmd_up, 0, NULL},
+	  cmd_up, 0, NULL},
 	{ "quit","quit", "Exit program",
-		cmd_exit, FLAG_HIDDEN, NULL},
+	  cmd_exit, FLAG_HIDDEN, NULL},
 	{ "exit", "exit", "Exit program",
-		cmd_exit, 0, NULL},
-	{ NULL, NULL, NULL, NULL, 0, NULL}};
+	  cmd_exit, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}
+};
 
 
 const struct cmd_tbl_entry dyno_cmd_table[] = {
 	{ "up", "up", "Return to previous menu level",
-		cmd_up, 0, NULL},
+	  cmd_up, 0, NULL},
 	{ "quit","quit", "Exit program",
-		cmd_exit, FLAG_HIDDEN, NULL},
+	  cmd_exit, FLAG_HIDDEN, NULL},
 	{ "exit", "exit", "Exit program",
-		cmd_exit, 0, NULL},
-	{ NULL, NULL, NULL, NULL, 0, NULL}};
+	  cmd_exit, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}
+};
 
 const struct cmd_tbl_entry v850_cmd_table[] = {
 	{ "up", "up", "Return to previous menu level",
-		cmd_up, 0, NULL},
+	  cmd_up, 0, NULL},
 	{ "quit","quit", "Exit program",
-		cmd_exit, FLAG_HIDDEN, NULL},
+	  cmd_exit, FLAG_HIDDEN, NULL},
 	{ "exit", "exit", "Exit program",
-		cmd_exit, 0, NULL},
-	{ NULL, NULL, NULL, NULL, 0, NULL}};
+	  cmd_exit, 0, NULL},
+	{ NULL, NULL, NULL, NULL, 0, NULL}
+};
 
 void l2raw_data_rcv(UNUSED(void *handle), struct diag_msg *msg) {
 	/*
@@ -60,20 +64,20 @@ void l2raw_data_rcv(UNUSED(void *handle), struct diag_msg *msg) {
 
 /* dummy func, we're not using J1979 */
 void j1979_data_rcv(void *handle, struct diag_msg *msg) {
-		(void) handle;
-		(void) msg;
-		return;
+	(void) handle;
+	(void) msg;
+	return;
 }
 
 /* dummy func, we're not using J1979 */
 struct diag_l3_conn;
 int l3_do_send(struct diag_l3_conn *d_conn, void *data, size_t len, void *handle) {
-		(void) d_conn;
-		(void) data;
-		(void) len;
-		(void) handle;
-		fprintf(stderr, "Error : L3 send code neutralized\n");
-		return 0;
+	(void) d_conn;
+	(void) data;
+	(void) len;
+	(void) handle;
+	fprintf(stderr, "Error : L3 send code neutralized\n");
+	return 0;
 }
 
 
@@ -83,8 +87,9 @@ l2_do_send(struct diag_l2_conn *d_conn, void *data, size_t len, void *handle)
 {
 	struct diag_msg msg={0};
 	int rv;
-	if (len > 255)
+	if (len > 255) {
 		return DIAG_ERR_GENERAL;
+	}
 
 	/* Put in src/dest etc, L2 may override/ignore them */
 	msg.src = global_cfg.src;

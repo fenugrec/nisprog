@@ -16,14 +16,14 @@
 
 #include "diag.h"
 #include "diag_l2.h"
-#include "diag_iso14230.h"	//for NRC decoding
+#include "diag_iso14230.h"  //for NRC decoding
 
 #include "nisprog.h"
 #include "ssm_backend.h"
 #include "nissutils/cli_utils/nislib.h"
 
 
-#define CURFILE "ssm_backend.c"	//HAAAX
+#define CURFILE "ssm_backend.c" //HAAAX
 
 
 /** Decode negative response code into a short error string.
@@ -42,9 +42,9 @@ static void sub_genkey(const uint8_t *seed8, uint8_t *key);
  * @return 0 if successful
  */
 int sub_get_ecuid(u8 *dest) {
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	uint8_t txdata[64];	//data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
 
 	int errval;
 
@@ -53,7 +53,7 @@ int sub_get_ecuid(u8 *dest) {
 		return -1;
 	}
 
-	nisreq.data=txdata;	//super very essential !
+	nisreq.data=txdata;
 
 	//SSM command for ssm_get ECU ID
 	txdata[0]=0xA8;  //0xA8 command
@@ -75,8 +75,9 @@ int sub_get_ecuid(u8 *dest) {
 	txdata[16]=0x05;  //offset byte 5
 	nisreq.len=17;
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 	if ((rxmsg->len != 6) || (rxmsg->data[0] != 0xE8)) {
 		printf("got bad ECU ID response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
@@ -84,8 +85,8 @@ int sub_get_ecuid(u8 *dest) {
 		diag_freemsg(rxmsg);
 		return -1;
 	}
-	memcpy(dest, rxmsg->data + 1, 5);	//skip 0xE8
-	dest[5]=0;	//null-terminate
+	memcpy(dest, rxmsg->data + 1, 5);   //skip 0xE8
+	dest[5]=0;  //null-terminate
 
 	diag_freemsg(rxmsg);
 	return 0;
@@ -98,9 +99,9 @@ int sub_get_ecuid(u8 *dest) {
  * @return 0 if successful
  */
 int sub_sid81_startcomms() {
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	uint8_t txdata[64];	//data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
 
 	int errval;
 
@@ -108,14 +109,15 @@ int sub_sid81_startcomms() {
 		printf("Not connected to ECU\nTry \"spconn\" first\n");
 	}
 
-	nisreq.data=txdata;	//super very essential !
+	nisreq.data=txdata;
 
 	txdata[0]=0x81;  //SID 0x81 startCommunications command
 	nisreq.len=1;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 	if ((rxmsg->len != 3) || (rxmsg->data[0] != 0xC1)) {
 		printf("got bad SID 0x81 startCommunications response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
@@ -135,18 +137,19 @@ int sub_sid81_startcomms() {
  * @return 0 if successful
  */
 int sub_sid27_unlock(){
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
 
 	txdata[0]=0x27;
-	txdata[1]=0x01;	//RequestSeed
+	txdata[1]=0x01; //RequestSeed
 	nisreq.len=2;
 	nisreq.data=txdata;
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 	if ((rxmsg->len != 6) || (rxmsg->data[0] != 0x67)) {
 		printf("got bad 27 01 response : ");
 		if (rxmsg->data[0] == 0x7F) {
@@ -162,9 +165,9 @@ int sub_sid27_unlock(){
 	printf("\nSeed obtained: %02x %02x %02x %02x\n", rxmsg->data[2], rxmsg->data[3], rxmsg->data[4], rxmsg->data[5]);
 
 	txdata[0]=0x27;
-	txdata[1]=0x02;	//SendKey
+	txdata[1]=0x02; //SendKey
 
-	sub_genkey(&rxmsg->data[2], &txdata[2]);	//write key to txdata buffer
+	sub_genkey(&rxmsg->data[2], &txdata[2]);    //write key to txdata buffer
 	printf("Key generated: %02x %02x %02x %02x\n", txdata[2], txdata[3], txdata[4], txdata[5]);
 
 	diag_freemsg(rxmsg);
@@ -173,8 +176,9 @@ int sub_sid27_unlock(){
 
 	nisreq.len=6; //27 02 K K K K
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 	if (rxmsg->data[0] != 0x67) {
 		printf("got bad 27 02 response : ");
 		if (rxmsg->data[0] == 0x7F) {
@@ -204,33 +208,35 @@ static void sub_genkey(const uint8_t *seed8, uint8_t *key) {
 		0x53DA, 0x33BC, 0x72EB, 0x437D,
 		0x7CA3, 0x3382, 0x834F, 0x3608,
 		0xAFB8, 0x503D, 0xDBA3, 0x9D34,
-		0x3563, 0x6B70, 0x6E74, 0x88F0};
+		0x3563, 0x6B70, 0x6E74, 0x88F0
+	};
 
 	const uint8_t indextransformation[]={
 		0x5, 0x6, 0x7, 0x1, 0x9, 0xC, 0xD, 0x8,
 		0xA, 0xD, 0x2, 0xB, 0xF, 0x4, 0x0, 0x3,
 		0xB, 0x4, 0x6, 0x0, 0xF, 0x2, 0xD, 0x9,
-		0x5, 0xC, 0x1, 0xA, 0x3, 0xD, 0xE, 0x8};
+		0x5, 0xC, 0x1, 0xA, 0x3, 0xD, 0xE, 0x8
+	};
 
 	seed = reconst_32(seed8);
 
 	for (ki = 15; ki >= 0; ki--) {
 
 		wordtogenerateindex = seed;
-		wordtobeencrypted = seed >> 16;	
+		wordtobeencrypted = seed >> 16;
 		index = wordtogenerateindex ^ keytogenerateindex[ki];
 		index += index << 16;
 		encryptionkey = 0;
 
 		for (n = 0; n < 4; n++) {
-			encryptionkey += indextransformation[(index >> (n * 4)) & 0x1F] << (n * 4);	
+			encryptionkey += indextransformation[(index >> (n * 4)) & 0x1F] << (n * 4);
 		}
 
 		encryptionkey = (encryptionkey >> 3) + (encryptionkey << 13);
 		seed = (encryptionkey ^ wordtobeencrypted) + (wordtogenerateindex << 16);
 	}
 
-	seed = (seed >> 16) + (seed << 16);	
+	seed = (seed >> 16) + (seed << 16);
 	write_32b(seed, key);
 
 	return;
@@ -246,33 +252,35 @@ void sub_encrypt(const uint8_t *datatoencrypt, uint8_t *encrypteddata) {
 	int ki, n;
 
 	const uint16_t keytogenerateindex[]={
-		0x7856, 0xCE22, 0xF513, 0x6E86};
+		0x7856, 0xCE22, 0xF513, 0x6E86
+	};
 
 	const uint8_t indextransformation[]={
 		0x5, 0x6, 0x7, 0x1, 0x9, 0xC, 0xD, 0x8,
 		0xA, 0xD, 0x2, 0xB, 0xF, 0x4, 0x0, 0x3,
 		0xB, 0x4, 0x6, 0x0, 0xF, 0x2, 0xD, 0x9,
-		0x5, 0xC, 0x1, 0xA, 0x3, 0xD, 0xE, 0x8};
+		0x5, 0xC, 0x1, 0xA, 0x3, 0xD, 0xE, 0x8
+	};
 
 	datatoencrypt32 = reconst_32(datatoencrypt);
 
 	for (ki = 0; ki < 4; ki++) {
 
 		wordtogenerateindex = datatoencrypt32;
-		wordtobeencrypted = datatoencrypt32 >> 16;	
+		wordtobeencrypted = datatoencrypt32 >> 16;
 		index = wordtogenerateindex ^ keytogenerateindex[ki];
 		index += index << 16;
 		encryptionkey = 0;
 
 		for (n = 0; n < 4; n++) {
-			encryptionkey += indextransformation[(index >> (n * 4)) & 0x1F] << (n * 4);	
+			encryptionkey += indextransformation[(index >> (n * 4)) & 0x1F] << (n * 4);
 		}
 
 		encryptionkey = (encryptionkey >> 3) + (encryptionkey << 13);
 		datatoencrypt32 = (encryptionkey ^ wordtobeencrypted) + (wordtogenerateindex << 16);
 	}
 
-	datatoencrypt32 = (datatoencrypt32 >> 16) + (datatoencrypt32 << 16);	
+	datatoencrypt32 = (datatoencrypt32 >> 16) + (datatoencrypt32 << 16);
 	write_32b(datatoencrypt32, encrypteddata);
 
 	return;
@@ -285,12 +293,12 @@ void sub_encrypt(const uint8_t *datatoencrypt, uint8_t *encrypteddata) {
  * @return 0 if successful
  */
 int sub_sid10_diagsession() {
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	uint8_t txdata[64];	//data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
 
 	int errval;
-	nisreq.data=txdata;	//super very essential !
+	nisreq.data=txdata;
 
 	txdata[0]=0x10;  //SID 0x10 startCommunications command
 	txdata[1]=0x85;  //programming session
@@ -298,8 +306,9 @@ int sub_sid10_diagsession() {
 	nisreq.len=3;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 	if ((rxmsg->len != 2) || (rxmsg->data[0] != 0x50)) {
 		printf("got bad SID 0x10 startCommunications response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
@@ -320,27 +329,28 @@ int sub_sid10_diagsession() {
  * @return 0 if successful
  */
 int sub_sid34_reqdownload(uint32_t dataaddr, uint32_t datalen) {
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	uint8_t txdata[64];	//data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
 
 	int errval;
-	nisreq.data=txdata;	//super very essential !
+	nisreq.data=txdata;
 
 	txdata[0]=0x34;  //SID 0x34 startCommunications command
 	txdata[1]=(uint8_t) (dataaddr >> 16) & 0xFF; //download target at 0xFF [address] (first 0xFF is assumed)
-	txdata[2]=(uint8_t) (dataaddr >> 8) & 0xFF;  
-	txdata[3]=(uint8_t) dataaddr & 0xFF;  
-	txdata[4]=0x04;  		 //uncompressed and encrypted
+	txdata[2]=(uint8_t) (dataaddr >> 8) & 0xFF;
+	txdata[3]=(uint8_t) dataaddr & 0xFF;
+	txdata[4]=0x04;          //uncompressed and encrypted
 	txdata[5]=(uint8_t) (datalen >> 16) & 0xFF;  //Memory size is next three bytes
 	txdata[6]=(uint8_t) (datalen >> 8) & 0xFF;
-	txdata[7]=(uint8_t) datalen & 0xFF;  
-	
+	txdata[7]=(uint8_t) datalen & 0xFF;
+
 	nisreq.len=8;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 	if ((rxmsg->len != 2) || (rxmsg->data[0] != 0x74)) {
 		printf("got bad SID 0x34 requestDownload response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
@@ -360,16 +370,18 @@ int sub_sid34_reqdownload(uint32_t dataaddr, uint32_t datalen) {
  * ret 0 if ok
  */
 int sub_sid36_transferdata(uint32_t dataaddr, uint8_t *buf, uint32_t len) {
-	uint8_t txdata[132];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[132];    //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
 	uint16_t blockno;
 	uint16_t maxblocks;
 	uint32_t blockaddr;
 
 	len &= ~0x03;
-	if (!buf || !len) return -1;
+	if (!buf || !len) {
+		return -1;
+	}
 
 	maxblocks = (len - 1) >> 7;  // number of 128 byte blocks - 1
 
@@ -387,8 +399,7 @@ int sub_sid36_transferdata(uint32_t dataaddr, uint8_t *buf, uint32_t len) {
 		if (blockno == maxblocks) {
 			memcpy(&txdata[4], buf, len);
 			nisreq.len = 4 + len;
-		}
-		else {
+		} else {
 			memcpy(&txdata[4], buf, 128);
 			nisreq.len= 4 + 128;
 			buf += 128;
@@ -396,7 +407,7 @@ int sub_sid36_transferdata(uint32_t dataaddr, uint8_t *buf, uint32_t len) {
 		}
 
 		rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-		
+
 		if ((rxmsg->len != 1) || rxmsg->data[0] != 0x76) {
 			printf("got bad SID 0x36 dataTransfer response : ");
 			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
@@ -406,7 +417,7 @@ int sub_sid36_transferdata(uint32_t dataaddr, uint8_t *buf, uint32_t len) {
 		}
 
 		printf("\rSID36 block 0x%04X/0x%04X done",
-				(unsigned) blockno, (unsigned) maxblocks);
+		       (unsigned) blockno, (unsigned) maxblocks);
 
 	}
 
@@ -416,26 +427,27 @@ int sub_sid36_transferdata(uint32_t dataaddr, uint8_t *buf, uint32_t len) {
 
 
 /* For Subaru, execute RAM Jump to address set in ROM (0xFFFF3004)
- * 
- * 
+ *
+ *
  * ret 0 if ok
  */
 int sub_sid31_startRoutine() {
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
 
 	txdata[0]=0x31;
 	txdata[1]=0x01;
-	txdata[2]=0x01; 
+	txdata[2]=0x01;
 	nisreq.len=3;
 	nisreq.data=txdata;
 
 	/* RAMjump */
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 
 	if (rxmsg->data[0] != 0x71) {
 		printf("got bad sid 31 response : ");
@@ -450,7 +462,7 @@ int sub_sid31_startRoutine() {
 }
 
 
-#define NRC_STRLEN 80	//too small and we get an assert() failure in smartcat() !!!
+#define NRC_STRLEN 80   //too small and we get an assert() failure in smartcat() !!!
 /** Return string for neg response code
  *
  * rxdata must point to the data frame (no headers), i.e. 0x7F <SID> <NRC>
@@ -461,7 +473,7 @@ static const char *decode_nrc(uint8_t *rxdata) {
 
 	// Try Standard ISO14230 NRC
 	tmsg.data = rxdata;
-	tmsg.len = 3;	//assume rxdata contains a "7F <SID> <NRC>" message
+	tmsg.len = 3;   //assume rxdata contains a "7F <SID> <NRC>" message
 	(void) diag_l3_iso14230_decode_response(&tmsg, descr, NRC_STRLEN);
 
 	return descr;

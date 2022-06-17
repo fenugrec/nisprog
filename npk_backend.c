@@ -20,7 +20,7 @@
 #include "diag_l1.h"
 #include "diag_l2.h"
 #include "diag_os.h"
-#include "diag_iso14230.h"	//for NRC decoding
+#include "diag_iso14230.h"  //for NRC decoding
 
 #include "npk_backend.h"
 #include "nissutils/cli_utils/nislib.h"
@@ -28,60 +28,60 @@
 #include "npkern/npk_errcodes.h"
 
 
-#define CURFILE "npk_backend.c"	//HAAAX
+#define CURFILE "npk_backend.c" //HAAAX
 
 /* flash block definitions */
 const struct flashblock fblocks_7058[] = {
-	{0x00000000,	0x00001000},
-	{0x00001000,	0x00001000},
-	{0x00002000,	0x00001000},
-	{0x00003000,	0x00001000},
-	{0x00004000,	0x00001000},
-	{0x00005000,	0x00001000},
-	{0x00006000,	0x00001000},
-	{0x00007000,	0x00001000},
-	{0x00008000,	0x00018000},
-	{0x00020000,	0x00020000},
-	{0x00040000,	0x00020000},
-	{0x00060000,	0x00020000},
-	{0x00080000,	0x00020000},
-	{0x000A0000,	0x00020000},
-	{0x000C0000,	0x00020000},
-	{0x000E0000,	0x00020000},
+	{0x00000000,    0x00001000},
+	{0x00001000,    0x00001000},
+	{0x00002000,    0x00001000},
+	{0x00003000,    0x00001000},
+	{0x00004000,    0x00001000},
+	{0x00005000,    0x00001000},
+	{0x00006000,    0x00001000},
+	{0x00007000,    0x00001000},
+	{0x00008000,    0x00018000},
+	{0x00020000,    0x00020000},
+	{0x00040000,    0x00020000},
+	{0x00060000,    0x00020000},
+	{0x00080000,    0x00020000},
+	{0x000A0000,    0x00020000},
+	{0x000C0000,    0x00020000},
+	{0x000E0000,    0x00020000},
 };
 
 const struct flashblock fblocks_7055[] = {
-	{0x00000000,	0x00001000},
-	{0x00001000,	0x00001000},
-	{0x00002000,	0x00001000},
-	{0x00003000,	0x00001000},
-	{0x00004000,	0x00001000},
-	{0x00005000,	0x00001000},
-	{0x00006000,	0x00001000},
-	{0x00007000,	0x00001000},
-	{0x00008000,	0x00008000},
-	{0x00010000,	0x00010000},
-	{0x00020000,	0x00010000},
-	{0x00030000,	0x00010000},
-	{0x00040000,	0x00010000},
-	{0x00050000,	0x00010000},
-	{0x00060000,	0x00010000},
-	{0x00070000,	0x00010000},
+	{0x00000000,    0x00001000},
+	{0x00001000,    0x00001000},
+	{0x00002000,    0x00001000},
+	{0x00003000,    0x00001000},
+	{0x00004000,    0x00001000},
+	{0x00005000,    0x00001000},
+	{0x00006000,    0x00001000},
+	{0x00007000,    0x00001000},
+	{0x00008000,    0x00008000},
+	{0x00010000,    0x00010000},
+	{0x00020000,    0x00010000},
+	{0x00030000,    0x00010000},
+	{0x00040000,    0x00010000},
+	{0x00050000,    0x00010000},
+	{0x00060000,    0x00010000},
+	{0x00070000,    0x00010000},
 };
 
 const struct flashblock fblocks_7051[] = {
-	{0x00000000,	0x00008000},
-	{0x00008000,	0x00008000},
-	{0x00010000,	0x00008000},
-	{0x00018000,	0x00008000},
-	{0x00020000,	0x00008000},
-	{0x00028000,	0x00008000},
-	{0x00030000,	0x00008000},
-	{0x00038000,	0x00007000},
-	{0x0003F000,	0x00000400},
-	{0x0003F400,	0x00000400},
-	{0x0003F800,	0x00000400},
-	{0x0003FC00,	0x00000400},
+	{0x00000000,    0x00008000},
+	{0x00008000,    0x00008000},
+	{0x00010000,    0x00008000},
+	{0x00018000,    0x00008000},
+	{0x00020000,    0x00008000},
+	{0x00028000,    0x00008000},
+	{0x00030000,    0x00008000},
+	{0x00038000,    0x00007000},
+	{0x0003F000,    0x00000400},
+	{0x0003F400,    0x00000400},
+	{0x0003F800,    0x00000400},
+	{0x0003FC00,    0x00000400},
 };
 
 const struct flashdev_t flashdevices[] = {
@@ -106,7 +106,7 @@ static const char *decode_nrc(uint8_t *rxdata);
  *
  *
  */
-#define NPK_CRC16	0xBAAD	//koopman, 2048bits (256B)
+#define NPK_CRC16   0xBAAD  //koopman, 2048bits (256B)
 static bool crc_tab16_init = 0;
 static u16 crc_tab16[256];
 
@@ -119,8 +119,11 @@ static void init_crc16_tab( void ) {
 		c   = (u16) i;
 
 		for (j=0; j<8; j++) {
-			if ( (crc ^ c) & 0x0001 ) crc = ( crc >> 1 ) ^ NPK_CRC16;
-			else                      crc =   crc >> 1;
+			if ( (crc ^ c) & 0x0001 ) {
+				crc = ( crc >> 1 ) ^ NPK_CRC16;
+			} else {
+				crc =   crc >> 1;
+			}
 			c = c >> 1;
 		}
 		crc_tab16[i] = crc;
@@ -134,7 +137,9 @@ static void init_crc16_tab( void ) {
 static u16 crc16(const u8 *data, u32 siz) {
 	u16 crc;
 
-	if ( ! crc_tab16_init ) init_crc16_tab();
+	if ( !crc_tab16_init ) {
+		init_crc16_tab();
+	}
 
 	crc = 0;
 
@@ -162,10 +167,10 @@ static u16 crc16(const u8 *data, u32 siz) {
 #define ROMCRC_NUMCHUNKS 4
 #define ROMCRC_CHUNKSIZE 256
 #define ROMCRC_ITERSIZE (ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE)
-#define ROMCRC_LENMASK ((ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE) - 1)	//should look like 0x3FF
+#define ROMCRC_LENMASK ((ROMCRC_NUMCHUNKS * ROMCRC_CHUNKSIZE) - 1)  //should look like 0x3FF
 static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *modified) {
-	uint8_t txdata[4 + (2*ROMCRC_NUMCHUNKS)];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
+	uint8_t txdata[4 + (2*ROMCRC_NUMCHUNKS)];   //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
 	uint8_t rxbuf[10];
 	int errval;
 	uint16_t chunko;
@@ -175,8 +180,8 @@ static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *
 
 	chunko = start / ROMCRC_CHUNKSIZE;
 
-		//request format : <SID_CONF> <SID_CONF_CKS1> <CNH> <CNL> <CRC0H> <CRC0L> ...<CRC3H> <CRC3L>
-		//verify if <CRCH:CRCL> hash is valid for n*256B chunk of the ROM (starting at <CNH:CNL> * 256)
+	//request format : <SID_CONF> <SID_CONF_CKS1> <CNH> <CNL> <CRC0H> <CRC0L> ...<CRC3H> <CRC3L>
+	//verify if <CRCH:CRCL> hash is valid for n*256B chunk of the ROM (starting at <CNH:CNL> * 256)
 	unsigned txi;
 	txdata[0]=SID_CONF;
 	txdata[1]=SID_CONF_CKS1;
@@ -233,7 +238,7 @@ static int check_romcrc(const uint8_t *src, uint32_t start, uint32_t len, bool *
 		//confirmed bad CRC, we can exit
 		*modified = 1;
 		return 0;
-	}	//for
+	}   //for
 
 	*modified = 0;
 	return 0;
@@ -257,7 +262,7 @@ int get_changed_blocks(const uint8_t *src, const uint8_t *orig_data, const struc
 		blen = fdt->fblocks[blockno].len;
 
 		printf("\rchecking block %02u/%02u (%06lX-%06lX)...",
-				blockno, fdt->numblocks -1, (unsigned long) bs, (unsigned long) bs + blen -1);
+		       blockno, fdt->numblocks -1, (unsigned long) bs, (unsigned long) bs + blen -1);
 		fflush(stdout);
 		/* compare with caller's buffer if provided: */
 		if (orig_data) {
@@ -287,7 +292,9 @@ static uint8_t cks_add8(uint8_t *data, unsigned len) {
 	uint16_t sum = 0;
 	for (; len; len--, data++) {
 		sum += *data;
-		if (sum & 0x100) sum += 1;
+		if (sum & 0x100) {
+			sum += 1;
+		}
 		sum = (uint8_t) sum;
 	}
 	return sum;
@@ -304,22 +311,22 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 	/* program 128-byte chunks */
 	uint32_t remain = len;
 
-	uint8_t txdata[134];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
+	uint8_t txdata[134];    //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
 	int errval;
 	nisreq.data = txdata;
 
 	unsigned long t0, chrono;
 
 	if ((len & (128 - 1)) ||
-		(start & (128 - 1))) {
+	    (start & (128 - 1))) {
 		printf("error: misaligned start / length ! \n");
 		return -1;
 	}
 
 	txdata[0]=SID_FLASH;
 	txdata[1]=SIDFL_WB;
-	nisreq.len = 134;	//2 (header) + 3 (addr) + 128 (payload) + 1 (extra CRC)
+	nisreq.len = 134;   //2 (header) + 3 (addr) + 128 (payload) + 1 (extra CRC)
 
 	t0 = diag_os_getms();
 
@@ -329,14 +336,20 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 		unsigned curspeed, tleft;
 
 		chrono = diag_os_getms() - t0;
-		if (!chrono) chrono += 1;
-		curspeed = 1000 * (len - remain) / chrono;	//avg B/s
-		if (!curspeed) curspeed += 1;
-		tleft = remain / curspeed;	//s
-		if (tleft > 9999) tleft = 9999;
+		if (!chrono) {
+			chrono += 1;
+		}
+		curspeed = 1000 * (len - remain) / chrono;  //avg B/s
+		if (!curspeed) {
+			curspeed += 1;
+		}
+		tleft = remain / curspeed;  //s
+		if (tleft > 9999) {
+			tleft = 9999;
+		}
 
 		printf("\rwriting chunk @ 0x%06X (%3u %%, %5u B/s, ~ %4u s remaining)", start, (unsigned) 100 * (len - remain) / len,
-				curspeed, tleft);
+		       curspeed, tleft);
 		fflush(stdout);
 
 		txdata[2] = start >> 16;
@@ -375,7 +388,9 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 			if (needed > 0) {
 				errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, &rxbuf[errval], needed, 300);
 			}
-			if (errval < 0) errval = 0;	//floor
+			if (errval < 0) {
+				errval = 0;             //floor
+			}
 			printf("%s\n", decode_nrc(&rxbuf[1]));
 			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 			return -1;
@@ -385,7 +400,7 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 		start += 128;
 		src += 128;
 
-	}	//while len
+	}   //while len
 	printf("\nWrite complete.\n");
 
 	return 0;
@@ -394,8 +409,8 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 
 
 int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned blockno, bool practice) {
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
+	uint8_t txdata[64]; //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
 	int errval;
 	struct diag_msg *rxmsg;
 
@@ -416,8 +431,9 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 	txdata[0]=SID_FLREQ;
 	nisreq.len = 1;
 	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		goto badexit;
+	}
 	if (rxmsg->data[0] != (SID_FLREQ + 0x40)) {
 		printf("got bad RequestDownload response : %s\n", decode_nrc(rxmsg->data));
 		diag_freemsg(rxmsg);
@@ -431,8 +447,9 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 		txdata[2]=~SIDFL_UNPROTECT;
 		nisreq.len = 3;
 		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-		if (rxmsg==NULL)
+		if (rxmsg==NULL) {
 			goto badexit;
+		}
 		if (rxmsg->data[0] != (SID_FLASH + 0x40)) {
 			printf("got bad Unprotect response : %s\n", decode_nrc(rxmsg->data));
 			diag_freemsg(rxmsg);
@@ -443,7 +460,7 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 
 	/* 3- erase block */
 	printf("Erasing block %u (0x%06X-0x%06X)...\n",
-			blockno, (unsigned) start, (unsigned) start + len - 1);
+	       blockno, (unsigned) start, (unsigned) start + len - 1);
 	txdata[0] = SID_FLASH;
 	txdata[1] = SIDFL_EB;
 	txdata[2] = blockno;
@@ -452,7 +469,7 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 	uint16_t old_p2max = global_l2_conn->diag_l2_p2max;
 	global_l2_conn->diag_l2_p2max = 1800;
 	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
-	global_l2_conn->diag_l2_p2max = old_p2max;	//restore p2max; the rest should be OK
+	global_l2_conn->diag_l2_p2max = old_p2max;  //restore p2max; the rest should be OK
 	if (rxmsg==NULL) {
 		printf("no ERASE_BLOCK response?\n");
 		goto badexit;
@@ -467,7 +484,7 @@ int reflash_block(const uint8_t *newdata, const struct flashdev_t *fdt, unsigned
 	errval = npk_raw_flashblock(newdata, start, len);
 	if (errval) {
 		printf("\nReflash error ! Do not panic, do not reset the ECU immediately. The kernel is "
-				"most likely still running and receiving commands !\n");
+		       "most likely still running and receiving commands !\n");
 		goto badexit;
 	}
 
@@ -483,8 +500,12 @@ uint8_t *load_rom(const char *fname, uint32_t expect_size) {
 	FILE *fpl;
 	uint8_t *buf;
 
-	if (!fname) return NULL;
-	if (!expect_size) return NULL;
+	if (!fname) {
+		return NULL;
+	}
+	if (!expect_size) {
+		return NULL;
+	}
 
 	if ((fpl = fopen(fname, "rb"))==NULL) {
 		printf("Cannot open %s !\n", fname);
@@ -494,7 +515,7 @@ uint8_t *load_rom(const char *fname, uint32_t expect_size) {
 	u32 file_len = flen(fpl);
 	if (file_len != expect_size) {
 		printf("error : wrong file length 0x%06lX (wanted 0x%06lX)!\n",
-				(unsigned long) file_len, (unsigned long) expect_size);
+		       (unsigned long) file_len, (unsigned long) expect_size);
 		goto badexit;
 	}
 
@@ -519,15 +540,15 @@ badexit:
 
 
 int set_eepr_addr(uint32_t addr) {
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	uint8_t txdata[8];	//data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
+	uint8_t txdata[8];  //data for nisreq
 
 	int errval;
 
-	nisreq.data=txdata;	//super very essential !
+	nisreq.data=txdata;
 
-    /* set eeprom_read() function address <SID_CONF> <SID_CONF_SETEEPR> <AH> <AM> <AL> */
+	/* set eeprom_read() function address <SID_CONF> <SID_CONF_SETEEPR> <AH> <AM> <AL> */
 	txdata[0] = SID_CONF;
 	txdata[1] = SID_CONF_SETEEPR;
 	txdata[2] = (addr >> 16) & 0xff;
@@ -536,8 +557,9 @@ int set_eepr_addr(uint32_t addr) {
 	nisreq.len=5;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 	if (rxmsg->data[0] != (SID_CONF + 0x40)) {
 		printf("got bad SID_CONF response : %s\n", decode_nrc(rxmsg->data));
 		diag_freemsg(rxmsg);
@@ -554,9 +576,9 @@ int set_eepr_addr(uint32_t addr) {
 #define BRR_FROM_KSPEED(x) (((20 * 1000 * 1000UL) / (32 * (x))) - 1)
 
 int set_kernel_speed(uint16_t kspeed) {
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	uint8_t txdata[8];	//data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
+	uint8_t txdata[8];  //data for nisreq
 
 	int errval;
 	unsigned newdiv;
@@ -583,17 +605,18 @@ int set_kernel_speed(uint16_t kspeed) {
 		return -1;
 	}
 
-	nisreq.data=txdata;	//super very essential !
+	nisreq.data=txdata;
 
-    //#define SID_CONF_SETSPEED 0x01	/* set comm speed (BRR divisor reg) : <SID_CONF> <SID_CONF_SETSPEED> <new divisor> */
+	//#define SID_CONF_SETSPEED 0x01	/* set comm speed (BRR divisor reg) : <SID_CONF> <SID_CONF_SETSPEED> <new divisor> */
 	txdata[0] = SID_CONF;
 	txdata[1] = SID_CONF_SETSPEED;
 	txdata[2] = newdiv & 0xff;
 	nisreq.len=3;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return -1;
+	}
 	if (rxmsg->data[0] != (SID_CONF + 0x40)) {
 		printf("got bad SID_CONF response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
@@ -610,10 +633,10 @@ int set_kernel_speed(uint16_t kspeed) {
 }
 
 const char *get_npk_id(void) {
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
-	uint8_t txdata[64];	//data for nisreq
-	static char npk_id[256];	//version string
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
+	static char npk_id[256];    //version string
 	unsigned idlen;
 
 	int errval;
@@ -623,8 +646,9 @@ const char *get_npk_id(void) {
 	txdata[0]=SID_RECUID;
 	nisreq.len=1;
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return NULL;
+	}
 	if (rxmsg->data[0] != (SID_RECUID + 0x40)) {
 		printf("got bad 1A response : %s", decode_nrc(rxmsg->data));
 		diag_freemsg(rxmsg);
@@ -633,13 +657,13 @@ const char *get_npk_id(void) {
 
 	idlen = rxmsg->len;
 	if ((idlen <= 1) ||
-		(idlen >= (sizeof(npk_id)))) {
+	    (idlen >= (sizeof(npk_id)))) {
 		printf("bad length %u for npk version string ! Old kernel maybe?\n", idlen);
 		return NULL;
 	}
 
-	memcpy(npk_id, rxmsg->data + 1, idlen - 1);	//skip 0x5A
-	npk_id[idlen]=0;	//null-terminate
+	memcpy(npk_id, rxmsg->data + 1, idlen - 1); //skip 0x5A
+	npk_id[idlen]=0;    //null-terminate
 
 	diag_freemsg(rxmsg);
 	return npk_id;
@@ -701,7 +725,7 @@ static const char *decode_nrc_npk(const uint8_t nrc) {
 	return NULL;
 }
 
-#define NRC_STRLEN 80	//too small and we get an assert() failure in smartcat() !!!
+#define NRC_STRLEN 80   //too small and we get an assert() failure in smartcat() !!!
 /** Return string for neg response code
  *
  * rxdata must point to the data frame (no headers), i.e. 0x7F <SID> <NRC>
@@ -715,11 +739,13 @@ static const char *decode_nrc(uint8_t *rxdata) {
 
 	// 1) try npk NRCs
 	output = decode_nrc_npk(nrc);
-	if (output) return output;
+	if (output) {
+		return output;
+	}
 
 	// 2) standard NRCs
 	tmsg.data = rxdata;
-	tmsg.len = 3;	//assume rxdata contains a "7F <SID> <NRC>" message
+	tmsg.len = 3;   //assume rxdata contains a "7F <SID> <NRC>" message
 	(void) diag_l3_iso14230_decode_response(&tmsg, descr, NRC_STRLEN);
 
 	return descr;

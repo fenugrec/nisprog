@@ -21,8 +21,8 @@
 #include "diag_l1.h"
 #include "diag_l2.h"
 #include "diag_os.h"
-#include "diag_tty.h"	//for setspeed
-#include "diag_l2_iso14230.h" 	//needed to force header type (nisprog)
+#include "diag_tty.h"   //for setspeed
+#include "diag_l2_iso14230.h"   //needed to force header type (nisprog)
 
 #include "scantool_cli.h"
 
@@ -34,12 +34,12 @@
 #include "nissutils/cli_utils/ecuid_list.h"
 #include "npkern/iso_cmds.h"
 
-#define CURFILE "np_cli.c"	//XXXXX TODO: fix VS automagic macro setting
+#define CURFILE "np_cli.c"  //XXXXX TODO: fix VS automagic macro setting
 
-#define NPK_SPEED 62500	//bps default speed for npkern kernel
+#define NPK_SPEED 62500 //bps default speed for npkern kernel
 
 
-typedef long nparam_val;	//type of .val member
+typedef long nparam_val;    //type of .val member
 
 /** simpler parameter unit than diag_cfgi */
 struct nparam_t {
@@ -47,18 +47,18 @@ struct nparam_t {
 	const char *shortname;
 	const char *descr;
 	long min;
-	long max;	//validation : (val >= min) && (val <= max)
+	long max;   //validation : (val >= min) && (val <= max)
 };
 
 
 static struct nparam_t nparam_p3 = {.val = 5, .shortname = "p3", .descr = "P3 time before new request (ms)",
-									.min = 0, .max = 500};
+	                                .min = 0, .max = 500};
 static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Read timeout offset. Adjust to eliminate timeout errors",
-									.min = -20, .max = 500};
+	                                 .min = -20, .max = 500};
 static struct nparam_t nparam_eepr = {.val = 0, .shortname = "eepr", .descr = "eeprom_read() function address",
-									.min = 0, .max = 2048L * 1024};
+	                                  .min = 0, .max = 2048L * 1024};
 static struct nparam_t nparam_kspeed = {.val = NPK_SPEED, .shortname = "kspeed", .descr = "kernel comms speed used by \"initk\" command",
-									.min = 100, .max = 65000};
+	                                    .min = 100, .max = 65000};
 static struct nparam_t *nparams[] = {
 	&nparam_p3,
 	&nparam_rxe,
@@ -95,14 +95,16 @@ static void update_params(void) {
 }
 
 /* npconf <paramname> <value>
-*/
+ */
 int cmd_npconf(int argc, char **argv) {
 	struct nparam_t *npt;
 	nparam_val tempval;
 	bool found = 0;
 	bool helping = 0;
 
-	if ((argc <= 1) || (argc > 3)) return CMD_USAGE;
+	if ((argc <= 1) || (argc > 3)) {
+		return CMD_USAGE;
+	}
 
 	if (argv[1][0] == '?') {
 		helping = 1;
@@ -123,7 +125,9 @@ int cmd_npconf(int argc, char **argv) {
 		}
 	}
 
-	if (helping) return CMD_OK;
+	if (helping) {
+		return CMD_OK;
+	}
 
 	if (!found) {
 		printf("Unknown param \"%s\"\n", argv[1]);
@@ -133,7 +137,7 @@ int cmd_npconf(int argc, char **argv) {
 	if (argc == 2) {
 		//no new value : just print current setting
 		printf("%s is currently %ld (0x%lX)\n", npt->shortname,
-				npt->val, npt->val);
+		       npt->val, npt->val);
 		return CMD_OK;
 	}
 
@@ -141,7 +145,7 @@ int cmd_npconf(int argc, char **argv) {
 
 	if ((tempval < npt->min) || (tempval > npt->max)) {
 		printf("Error, requested value (%ld / 0x%lX) out of bounds !\n",
-				(long) tempval, (long) tempval);
+		       (long) tempval, (long) tempval);
 		return CMD_FAILED;
 	}
 	npt->val = tempval;
@@ -228,7 +232,7 @@ int cmd_dumpmem(int argc, char **argv) {
 }
 
 #define KEY_CANDIDATES 3
-#define KEY_MAXDIST 10	//do not use keys that are way off
+#define KEY_MAXDIST 10  //do not use keys that are way off
 void autoselect_keyset(void) {
 	unsigned i;
 	u32 s27k;
@@ -253,7 +257,7 @@ void autoselect_keyset(void) {
 	(void) set_keyset(s27k);
 
 	printf("Using best choice, SID27 key=%08lX. Use \"setkeys\" to change if required.\n",
-			(unsigned long) s27k);
+	       (unsigned long) s27k);
 
 	return;
 }
@@ -287,7 +291,9 @@ int cmd_setdev(int argc, char **argv) {
 			return CMD_OK;
 		}
 	}
-	if (helping) return CMD_OK;
+	if (helping) {
+		return CMD_OK;
+	}
 
 	printf("Invalid device, see list with \"setdev ?\"\n");
 	return CMD_FAILED;
@@ -302,7 +308,9 @@ int cmd_setkeys(int argc, char **argv) {
 			return CMD_USAGE;
 		}
 	}
-	if ((argc < 2) || (argc > 3)) return CMD_USAGE;
+	if ((argc < 2) || (argc > 3)) {
+		return CMD_USAGE;
+	}
 
 	u32 s27k = (u32) htoi(argv[1]);
 	customkey.s27k = s27k;
@@ -323,7 +331,7 @@ int cmd_setkeys(int argc, char **argv) {
 goodexit:
 	pks = nisecu.keyset;
 	printf("Now using SID27 key=%08lX, SID36 key1=%08lX\n",
-				(unsigned long) pks->s27k, (unsigned long) pks->s36k1);
+	       (unsigned long) pks->s27k, (unsigned long) pks->s36k1);
 	return CMD_OK;
 }
 
@@ -332,10 +340,12 @@ int cmd_initk(int argc, char **argv) {
 	const char *npk_id;
 
 	(void) argv;
-	if (argc > 1) return CMD_USAGE;
+	if (argc > 1) {
+		return CMD_USAGE;
+	}
 
 	if ((npstate == NP_DISC) ||
-		(global_state == STATE_IDLE)) {
+	    (global_state == STATE_IDLE)) {
 		printf("Error : not connected\n");
 		return CMD_FAILED;
 	}
@@ -359,10 +369,12 @@ int cmd_initk(int argc, char **argv) {
 
 int cmd_npconn(int argc, char **argv) {
 	(void) argv;
-	if (argc > 1) return CMD_USAGE;
+	if (argc > 1) {
+		return CMD_USAGE;
+	}
 
 	if ((npstate != NP_DISC) ||
-		(global_state != STATE_IDLE)) {
+	    (global_state != STATE_IDLE)) {
 		printf("Error : already connected\n");
 		return CMD_FAILED;
 	}
@@ -389,19 +401,20 @@ int cmd_npconn(int argc, char **argv) {
 	rv = diag_l2_open(dl0d, global_cfg.L1proto);
 	if (rv) {
 		fprintf(stderr, "Open failed for protocol %d on %s\n",
-			global_cfg.L1proto, dl0d->dl0->shortname);
+		        global_cfg.L1proto, dl0d->dl0->shortname);
 		return CMD_FAILED;
 	}
 
-	if (global_cfg.addrtype)
+	if (global_cfg.addrtype) {
 		flags = DIAG_L2_TYPE_FUNCADDR;
-	else
+	} else {
 		flags = 0;
+	}
 
-	flags |= (global_cfg.initmode & DIAG_L2_TYPE_INITMASK) ;
+	flags |= (global_cfg.initmode & DIAG_L2_TYPE_INITMASK);
 
 	d_conn = diag_l2_StartCommunications(dl0d, global_cfg.L2proto,
-		flags, global_cfg.speed, global_cfg.tgt, global_cfg.src);
+	                                     flags, global_cfg.speed, global_cfg.tgt, global_cfg.src);
 
 	if (d_conn == NULL) {
 		rv=diag_geterr();
@@ -420,13 +433,13 @@ int cmd_npconn(int argc, char **argv) {
 
 	printf("Connected to ECU !\n");
 
-	struct diag_l2_14230 * dlproto;	// for bypassing headers
+	struct diag_l2_14230 * dlproto; // for bypassing headers
 	dlproto = (struct diag_l2_14230 *)global_l2_conn->diag_l2_proto_data;
 	if (dlproto->modeflags & ISO14230_SHORTHDR) {
-		dlproto->modeflags &= ~ISO14230_LONGHDR;	//deactivate long headers
+		dlproto->modeflags &= ~ISO14230_LONGHDR;    //deactivate long headers
 	} else {
 		printf("Short headers not supported by ECU ! Have you \"set addrtype phys\" ?"
-				"Some stuff will not work.");
+		       "Some stuff will not work.");
 	}
 
 	if (get_ecuid(nisecu.ecuid)) {
@@ -442,10 +455,12 @@ int cmd_npconn(int argc, char **argv) {
 
 int cmd_spconn(int argc, char **argv) {
 	(void) argv;
-	if (argc > 1) return CMD_USAGE;
+	if (argc > 1) {
+		return CMD_USAGE;
+	}
 
 	if ((npstate != NP_DISC) ||
-		(global_state != STATE_IDLE)) {
+	    (global_state != STATE_IDLE)) {
 		printf("Error : already connected\n");
 		return CMD_FAILED;
 	}
@@ -473,19 +488,20 @@ int cmd_spconn(int argc, char **argv) {
 	rv = diag_l2_open(dl0d, global_cfg.L1proto);
 	if (rv) {
 		fprintf(stderr, "Open failed for protocol %d on %s\n",
-			global_cfg.L1proto, dl0d->dl0->shortname);
+		        global_cfg.L1proto, dl0d->dl0->shortname);
 		return CMD_FAILED;
 	}
 
-	if (global_cfg.addrtype)
+	if (global_cfg.addrtype) {
 		flags = DIAG_L2_TYPE_FUNCADDR;
-	else
+	} else {
 		flags = 0;
+	}
 
-	flags |= (global_cfg.initmode & DIAG_L2_TYPE_INITMASK) ;
+	flags |= (global_cfg.initmode & DIAG_L2_TYPE_INITMASK);
 
 	d_conn = diag_l2_StartCommunications(dl0d, global_cfg.L2proto,
-		flags, global_cfg.speed, global_cfg.tgt, global_cfg.src);
+	                                     flags, global_cfg.speed, global_cfg.tgt, global_cfg.src);
 
 	if (d_conn == NULL) {
 		rv=diag_geterr();
@@ -493,26 +509,28 @@ int cmd_spconn(int argc, char **argv) {
 		printf("L2 StartComms failed\n");
 		return CMD_FAILED;
 	}
-	
+
 	//At this point we have a valid RAW connection and need to update d_conn manually to change to ISO14230 with Subaru headers, checksum
 	//The general initialisation would have set d_conn->diag_link, ->l2proto, ->diag_l2_type, ->diag_l2_srcaddr, ->diag_l2_destaddr,
 	//->diag_l2_p1 2 2e 3 4 min max, ->tinterval, ->tlast, ->diag_l2_state
-	//The RAW initialisation would have set diag_serial_settings and d_conn->diag_l2_destaddr and ->diag_l2_srcaddr 
-	
+	//The RAW initialisation would have set diag_serial_settings and d_conn->diag_l2_destaddr and ->diag_l2_srcaddr
+
 	printf("L2 RAW detected, changing to L2 ISO14230\n");
 
 	global_cfg.L2proto = DIAG_L2_PROT_ISO14230;
-			
+
 	for (i=0; l2proto_list[i] ; i++) {
-		dl2p = l2proto_list[i];	
+		dl2p = l2proto_list[i];
 		if (dl2p->diag_l2_protocol == global_cfg.L2proto) {
 			d_conn->l2proto = dl2p;
 			break;
 		}
-	}		
+	}
 
 	rv = diag_calloc(&dp, 1);
-	if (rv != 0) return CMD_FAILED;			
+	if (rv != 0) {
+		return CMD_FAILED;
+	}
 
 	d_conn->diag_l2_proto_data = (void *)dp;
 
@@ -533,7 +551,7 @@ int cmd_spconn(int argc, char **argv) {
 
 	update_params();
 
-	if(sub_sid81_startcomms()){
+	if(sub_sid81_startcomms()) {
 		printf("SID 0x81 startCommunications failed. Verify settings, connection mode etc.\n");
 		global_l2_conn = NULL;
 		global_state = STATE_IDLE;
@@ -550,16 +568,18 @@ int cmd_spconn(int argc, char **argv) {
 		return CMD_FAILED;
 	}
 	printf("\nECUID: ");
-	for (i=0; i < 5; i++) printf("%02x ", nisecu.ecuid[i]);
+	for (i=0; i < 5; i++) {
+		printf("%02x ", nisecu.ecuid[i]);
+	}
 	printf("\n");
-	
+
 	return CMD_OK;
 }
 
 
 int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
 	if ((npstate == NP_DISC) ||
-		(global_state == STATE_IDLE)) {
+	    (global_state == STATE_IDLE)) {
 		return CMD_OK;
 	}
 
@@ -575,15 +595,17 @@ int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
 
 int cmd_stopkernel(int argc, UNUSED(char **argv)) {
 	uint8_t txdata[1];
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
 
 	if (npstate != NP_NPKCONN) {
 		return CMD_OK;
 	}
 
-	if (argc != 1) return CMD_USAGE;
+	if (argc != 1) {
+		return CMD_USAGE;
+	}
 
 	printf("Resetting ECU and closing connection. You may need to change speed before reconnecting.\n");
 
@@ -592,7 +614,9 @@ int cmd_stopkernel(int argc, UNUSED(char **argv)) {
 	nisreq.data=txdata;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL) return CMD_FAILED;
+	if (rxmsg==NULL) {
+		return CMD_FAILED;
+	}
 
 	(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 	(void) cmd_npdisc(0, NULL);
@@ -605,9 +629,9 @@ int cmd_stopkernel(int argc, UNUSED(char **argv)) {
 // accesstimingparams (get limits + setvals)
 static int np_1(UNUSED(int argc), UNUSED(char **argv)) {
 
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
 
 	txdata[0]=0x10;
@@ -617,8 +641,9 @@ static int np_1(UNUSED(int argc), UNUSED(char **argv)) {
 	nisreq.data=txdata;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return CMD_FAILED;
+	}
 	if (rxmsg->data[0] != 0x50) {
 		printf("got bad response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
@@ -632,11 +657,12 @@ static int np_1(UNUSED(int argc), UNUSED(char **argv)) {
 
 	//try accesstimingparam : read limits
 	txdata[0]=0x83;
-	txdata[1]=0x0;	//read limits
+	txdata[1]=0x0;  //read limits
 	nisreq.len=2;
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return CMD_FAILED;
+	}
 	printf("\nAccesTiming : read limits got ");
 	diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 	diag_freemsg(rxmsg);
@@ -646,8 +672,9 @@ static int np_1(UNUSED(int argc), UNUSED(char **argv)) {
 	txdata[1]=0x02;
 	nisreq.len=2;
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return CMD_FAILED;
+	}
 	printf("\nAccesTiming : read settings got ");
 	diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 	diag_freemsg(rxmsg);
@@ -661,10 +688,10 @@ static int np_2(int argc, char **argv) {
 	// RX {06 E4 <A0> <A1> <A2> <A3> <BB> cks}, 8 bytes
 	// total traffic : 17 bytes for 1 rx'd byte - very slow
 	//printf("Attempting to read 1 byte @ 000000:\n");
-	uint8_t txdata[64];	//data for nisreq
+	uint8_t txdata[64]; //data for nisreq
 	uint32_t addr;
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
 
 	if (argc != 3) {
@@ -680,14 +707,15 @@ static int np_2(int argc, char **argv) {
 	txdata[3]= (uint8_t) (addr >> 8) & 0xFF;
 	txdata[2]= (uint8_t) (addr >> 16) & 0xFF;
 	txdata[1]= (uint8_t) (addr >> 24) & 0xFF;
-	txdata[5]=0x04;	//TXM
-	txdata[6]=0x01;	//NumResps
+	txdata[5]=0x04; //TXM
+	txdata[6]=0x01; //NumResps
 	nisreq.len=7;
 	nisreq.data=txdata;
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
-	if (rxmsg==NULL)
+	if (rxmsg==NULL) {
 		return CMD_FAILED;
+	}
 	if ((rxmsg->data[0] != 0xE4) || (rxmsg->len != 6)) {
 		printf("got bad A4 response : ");
 		diag_data_dump(stdout, rxmsg->data, rxmsg->len);
@@ -707,49 +735,51 @@ static int np_2(int argc, char **argv) {
  * return CMD_* , caller must close outf
  */
 static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
-		//SID AC + 21 technique.
-		// AC 81 {83 GGGG} {83 GGGG} ... to load addresses, (5*n + 4) bytes on bus
-		// RX: {EC 81}, 4 bytes
-		// TX: {21 81 04 01} to dump data (6 bytes)
-		// RX: {61 81 <n*data>} (4 + n) bytes.
-		// Total traffic : (6*n + 18) bytes on bus for <n> bytes RX'd
-	struct diag_msg nisreq={0};	//request to send
-	uint8_t txdata[64];	//data for nisreq
+	//SID AC + 21 technique.
+	// AC 81 {83 GGGG} {83 GGGG} ... to load addresses, (5*n + 4) bytes on bus
+	// RX: {EC 81}, 4 bytes
+	// TX: {21 81 04 01} to dump data (6 bytes)
+	// RX: {61 81 <n*data>} (4 + n) bytes.
+	// Total traffic : (6*n + 18) bytes on bus for <n> bytes RX'd
+	struct diag_msg nisreq={0}; //request to send
+	uint8_t txdata[64]; //data for nisreq
 	int errval;
-	int retryscore=100;	//successes increase this up to 100; failures decrease it.
+	int retryscore=100; //successes increase this up to 100; failures decrease it.
 	uint8_t hackbuf[70];
-	int extra;	//extra bytes to purge
+	int extra;  //extra bytes to purge
 	uint32_t addr, nextaddr, maxaddr;
 	unsigned long total_chron;
 
 	nextaddr = start;
 	maxaddr = start + len - 1;
 
-	if (!outf) return CMD_FAILED;
+	if (!outf) {
+		return CMD_FAILED;
+	}
 
-	nisreq.data=txdata;	//super very essential !
+	nisreq.data=txdata;
 	total_chron = diag_os_getms();
 	while (retryscore >0) {
 
-		unsigned int linecur=0;	//count from 0 to 11 (12 addresses per request)
+		unsigned int linecur=0; //count from 0 to 11 (12 addresses per request)
 
-		int txi;	//index into txbuf for constructing request
+		int txi;    //index into txbuf for constructing request
 
 
 		printf("Starting dump from 0x%08X to 0x%08X.\n", nextaddr, maxaddr);
 
 		txdata[0]=0xAC;
 		txdata[1]=0x81;
-		nisreq.len = 2;	//AC 81 : 2 bytes so far
+		nisreq.len = 2; //AC 81 : 2 bytes so far
 		txi=2;
 		linecur = 0;
 
 		unsigned long t0, chrono;
-		unsigned chron_cnt = 0;	//how many bytes between refreshes
+		unsigned chron_cnt = 0; //how many bytes between refreshes
 		t0 = diag_os_getms();
 
 		for (addr=nextaddr; addr <= maxaddr; addr++) {
-			txdata[txi++]= 0x83;		//field type
+			txdata[txi++]= 0x83;        //field type
 			txdata[txi++]= (uint8_t) (addr >> 24) & 0xFF;
 			txdata[txi++]= (uint8_t) (addr >> 16) & 0xFF;
 			txdata[txi++]= (uint8_t) (addr >> 8) & 0xFF;
@@ -758,22 +788,25 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			linecur += 1;
 
 			//request 12 addresses at a time, or whatever's left at the end
-			if ((linecur != 0x0c) && (addr != maxaddr))
+			if ((linecur != 0x0c) && (addr != maxaddr)) {
 				continue;
+			}
 
 			unsigned curspeed, tmin, tsec;
 			chron_cnt += linecur;
 			chrono = diag_os_getms() - t0;
 			if (chrono > 200) {
 				//limit update rate
-				curspeed = 1000 * (chron_cnt) / chrono;	//avg B/s
-				if (!curspeed) curspeed += 1;
+				curspeed = 1000 * (chron_cnt) / chrono; //avg B/s
+				if (!curspeed) {
+					curspeed += 1;
+				}
 				tsec = ((maxaddr - addr) / curspeed) % 9999;
 				tmin = tsec / 60;
 				tsec = tsec % 60;
 
 				printf("\rreading @ 0x%08X (%3u %%, %5u B/s, ~ %3u:%02u remaining ", nextaddr,
-								(unsigned) 100 * (maxaddr - addr) / len, curspeed, tmin, tsec);
+				       (unsigned) 100 * (maxaddr - addr) / len, curspeed, tmin, tsec);
 				fflush(stdout);
 				chron_cnt = 0;
 				t0 = diag_os_getms();
@@ -788,10 +821,10 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 				retryscore -= 25;
 				diag_os_millisleep(300);
 				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-				break;	//out of for()
+				break;  //out of for()
 			}
 
-			rqok=0;	//default to fail
+			rqok=0; //default to fail
 
 			//and get a response; we already know the max expected length:
 			// 0xEC 0x81 + 2 (short hdr) or +4 (full hdr).
@@ -799,7 +832,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			// We should find 0xEC if it's in there no matter what kind of header.
 			// We'll "purge" the next bytes when we send SID 21
 			errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-					hackbuf, 4, (unsigned) (25 + nparam_rxe.val));
+			                    hackbuf, 4, (unsigned) (25 + nparam_rxe.val));
 			if (errval == 4) {
 				//try to find 0xEC in the first bytes:
 				for (i=0; i<=3 && i<errval; i++) {
@@ -815,14 +848,14 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 				retryscore -= 25;
 				diag_os_millisleep(300);
 				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-				break;	//out of for()
+				break;  //out of for()
 			}
 			//Here, we're guaranteed to have found 0xEC in the first 4 bytes we got. But we may
 			//need to "purge" some extra bytes on the next read
 			// hdr0 (hdr1) (hdr2) 0xEC 0x81 ck
 			//
-			extra = (3 + i - errval);	//bytes to purge. I think the formula is ok
-			extra = (extra < 0) ? 0: extra;	//make sure >=0
+			extra = (3 + i - errval);   //bytes to purge. I think the formula is ok
+			extra = (extra < 0) ? 0: extra; //make sure >=0
 
 			//Here, we sent a AC 81 83 ... 83... request that was accepted.
 			//We need to send 21 81 04 01 to get the data now
@@ -832,14 +865,14 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			txdata[3]=0x01;
 			nisreq.len=4;
 
-			rqok=0;	//default to fail
+			rqok=0; //default to fail
 			//send the request "properly"
 			if (diag_l2_send(global_l2_conn, &nisreq)) {
 				printf("l2_send() problem !\n");
 				retryscore -=25;
 				diag_os_millisleep(300);
 				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-				break;	//out of for ()
+				break;  //out of for ()
 			}
 
 			//and get a response; we already know the max expected length:
@@ -849,19 +882,19 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			//By requesting (extra) + 4 with a short timeout, we'll return
 			//here very quickly and we're certain to "catch" 0x61.
 			errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-					hackbuf, extra + 4, (unsigned) (25 + nparam_rxe.val));
+			                    hackbuf, extra + 4, (unsigned) (25 + nparam_rxe.val));
 			if (errval != extra+4) {
 				retryscore -=25;
 				diag_os_millisleep(300);
 				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
-				break;	//out of for ()
+				break;  //out of for ()
 			}
 			//try to find 0x61 in the first bytes:
 			for (i=0; i<errval; i++) {
-					if (hackbuf[i] == 0x61) {
-						rqok=1;
-						break;
-					}
+				if (hackbuf[i] == 0x61) {
+					rqok=1;
+					break;
+				}
 			}
 			//we now know where the real data starts so we can request the
 			//exact number of bytes remaining. Now, (errval - i) is the number
@@ -877,20 +910,21 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 				extra=0;
 			} else {
 				errval=diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-					&hackbuf[errval], extra, (unsigned) (25 + nparam_rxe.val));
+				                    &hackbuf[errval], extra, (unsigned) (25 + nparam_rxe.val));
 			}
 
-			if (errval != extra)	//this should always fit...
+			if (errval != extra) {  //this should always fit...
 				rqok=0;
+			}
 
 			if (!rqok) {
 				//either negative response or not enough data !
 				printf("\nhack mode : bad 61 response %02X %02X, i=%02X extra=%02X ev=%02X\n",
-						hackbuf[i], hackbuf[i+1], i, extra, errval);
+				       hackbuf[i], hackbuf[i+1], i, extra, errval);
 				diag_os_millisleep(300);
 				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 				retryscore -= 25;
-				break;	//out of for ()
+				break;  //out of for ()
 			}
 			//and verify checksum. [i] points to 0x61;
 			if (hackbuf[i+2+linecur] != diag_cks1(&hackbuf[i-1], 3+linecur)) {
@@ -900,20 +934,20 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 				diag_os_millisleep(300);
 				(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 				retryscore -=20;
-				break;	//out of for ()
+				break;  //out of for ()
 			}
 
-				//We can now dump this to the file...
+			//We can now dump this to the file...
 			if (fwrite(&(hackbuf[i+2]), 1, linecur, outf) != linecur) {
 				printf("Error writing file!\n");
-				retryscore -= 101;	//fatal, sir
-				break;	//out of for ()
+				retryscore -= 101;  //fatal, sir
+				break;  //out of for ()
 			}
 
-			nextaddr += linecur;	//if we crash, we can resume starting at nextaddr
+			nextaddr += linecur;    //if we crash, we can resume starting at nextaddr
 			linecur=0;
 			//success: allow us more errors
-			retryscore = (retryscore > 95)? 100:(retryscore+5) ;
+			retryscore = (retryscore > 95)? 100:(retryscore+5);
 
 			//and reset tx template + sub-counters
 			txdata[0]=0xAc;
@@ -921,16 +955,16 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			nisreq.len=2;
 			txi=2;
 
-		}	//for
+		}   //for
 		if (addr <= maxaddr) {
 			//the for loop didn't complete;
 			//(if succesful, addr == maxaddr+1 !!)
 			printf("\nRetry score: %d\n", retryscore);
 		} else {
 			printf("\nFinished! ~%lu Bps\n", 1000*(maxaddr - start)/(diag_os_getms() - total_chron));
-			break;	//leave while()
+			break;  //leave while()
 		}
-	}	//while retryscore>0
+	}   //while retryscore>0
 
 	if (retryscore <= 0) {
 		printf("Too many errors, no more retries @ addr=%08X.\n", start);
@@ -947,28 +981,30 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
  * @return num of bytes read
  */
 static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
-	uint32_t sent;	//count
+	uint32_t sent;  //count
 	uint32_t goodbytes;
 
-	if (!dest || (len==0)) return 0;
+	if (!dest || (len==0)) {
+		return 0;
+	}
 
-	unsigned int linecur;	//count from 0 to 11 (12 addresses per request)
+	unsigned int linecur;   //count from 0 to 11 (12 addresses per request)
 
-	int txi;	//index into txbuf for constructing request
+	int txi;    //index into txbuf for constructing request
 
 	txdata[0]=0xAC;
 	txdata[1]=0x81;
-	nisreq.len = 2;	//AC 81 : 2 bytes so far
+	nisreq.len = 2; //AC 81 : 2 bytes so far
 	nisreq.data=txdata;
 	txi=2;
 	linecur = 0;
 	goodbytes = 0;
 	for (sent=0; sent < len; addr++) {
-		txdata[txi++]= 0x83;		//field type
+		txdata[txi++]= 0x83;        //field type
 		txdata[txi++]= (uint8_t) (addr >> 24) & 0xFF;
 		txdata[txi++]= (uint8_t) (addr >> 16) & 0xFF;
 		txdata[txi++]= (uint8_t) (addr >> 8) & 0xFF;
@@ -977,16 +1013,17 @@ static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 		linecur += 1;
 		sent++;
 		//request 12 addresses at a time, or whatever's left at the end
-		if ((linecur != 0x0c) && (sent != len))
+		if ((linecur != 0x0c) && (sent != len)) {
 			continue;
+		}
 
 		rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
 		if (rxmsg==NULL) {
 			printf("\nError: no resp to rqst AC @ %08X, err=%d\n", addr, errval);
-			break;	//leave for loop
+			break;  //leave for loop
 		}
 		if ((rxmsg->data[0] != 0xEC) || (rxmsg->len != 2) ||
-				(rxmsg->fmt & DIAG_FMT_BADCS)) {
+		    (rxmsg->fmt & DIAG_FMT_BADCS)) {
 			printf("\nFatal : bad AC resp at addr=0x%X:\n", addr);
 			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 			diag_freemsg(rxmsg);
@@ -1005,12 +1042,12 @@ static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 		rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
 		if (rxmsg==NULL) {
 			printf("\nFatal : did not get response at address %08X, err=%d\n", addr, errval);
-			break;	//leave for loop
+			break;  //leave for loop
 		}
 		if ((rxmsg->data[0] != 0x61) || (rxmsg->len != (2+linecur)) ||
-				(rxmsg->fmt & DIAG_FMT_BADCS)) {
+		    (rxmsg->fmt & DIAG_FMT_BADCS)) {
 			printf("\nFatal : error at addr=0x%X: %02X, len=%u\n", addr,
-				rxmsg->data[0], rxmsg->len);
+			       rxmsg->data[0], rxmsg->len);
 			diag_freemsg(rxmsg);
 			break;
 		}
@@ -1019,8 +1056,9 @@ static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 		dest = &dest[linecur];
 		goodbytes = sent;
 
-		if (rxmsg)
+		if (rxmsg) {
 			diag_freemsg(rxmsg);
+		}
 
 		linecur=0;
 
@@ -1030,7 +1068,7 @@ static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 		nisreq.len=2;
 		txi=2;
 
-	}	//for
+	}   //for
 
 	return goodbytes;
 }
@@ -1053,7 +1091,7 @@ int cmd_watch(int argc, char **argv) {
 
 	addr = (uint32_t) htoi(argv[1]);
 	printf("\nMonitoring 0x%0X; press Enter to interrupt.\n", addr);
-	(void) diag_os_ipending();	//must be done outside the loop first
+	(void) diag_os_ipending();  //must be done outside the loop first
 	while ( !diag_os_ipending()) {
 
 		if (npstate == NP_NORMALCONN) {
@@ -1084,7 +1122,9 @@ int cmd_watch(int argc, char **argv) {
  */
 static uint16_t encrypt_buf(uint8_t *buf, uint32_t len, uint32_t key) {
 	uint16_t cks;
-	if (!buf || !len) return 0;
+	if (!buf || !len) {
+		return 0;
+	}
 
 	len &= ~3;
 	cks = 0;
@@ -1109,7 +1149,9 @@ static uint16_t encrypt_buf(uint8_t *buf, uint32_t len, uint32_t key) {
  *
  */
 void sub_encrypt_buf(uint8_t *buf, uint32_t len) {
-	if (!buf || !len) return;
+	if (!buf || !len) {
+		return;
+	}
 
 	len &= ~3;
 	for (; len > 0; len -= 4) {
@@ -1137,10 +1179,10 @@ static bool set_keyset(u32 s27k) {
 	return 0;
 }
 
-#define S27K_DEFAULTADDR	0xffff8416UL
-#define S27K_SEARCHSTART	0xffff8000UL
-#define S27K_SEARCHEND	0xffffA000UL	//on 7055, 7058 targets this will be adequate. TODO : adjust according to nisecu.flashdev ?
-#define S27K_SEARCHSIZE	0x80	//search this many bytes at a time
+#define S27K_DEFAULTADDR    0xffff8416UL
+#define S27K_SEARCHSTART    0xffff8000UL
+#define S27K_SEARCHEND  0xffffA000UL    //on 7055, 7058 targets this will be adequate. TODO : adjust according to nisecu.flashdev ?
+#define S27K_SEARCHSIZE 0x80    //search this many bytes at a time
 
 /* attempt to extract sid27 key by dumping RAM progressively. */
 int cmd_guesskey(int argc, char **argv) {
@@ -1158,8 +1200,8 @@ int cmd_guesskey(int argc, char **argv) {
 	}
 
 	/* strategy : SID 27 01 to get seed, check @ ffff8416 first since that is very common.
-	* Else, fallback to dumping common area.
-	*/
+	 * Else, fallback to dumping common area.
+	 */
 
 	uint8_t txdata[2] = {0x27, 0x01};
 	struct diag_msg *rxmsg, nisreq={0};
@@ -1190,7 +1232,7 @@ int cmd_guesskey(int argc, char **argv) {
 	// i.e. not as two half-keys stored separately.
 	// hence increment addr by (size - 2), to have overlapping chunks.
 
-	(void) diag_os_ipending();	//must be done outside the loop first
+	(void) diag_os_ipending();  //must be done outside the loop first
 
 	u32 addr;
 	for (addr=S27K_SEARCHSTART; addr < S27K_SEARCHEND; addr += (S27K_SEARCHSIZE - 2)) {
@@ -1199,7 +1241,9 @@ int cmd_guesskey(int argc, char **argv) {
 			printf("long search query failed ?\n");
 			return CMD_FAILED;
 		}
-		if (diag_os_ipending()) break;
+		if (diag_os_ipending()) {
+			break;
+		}
 
 		unsigned idx;
 		for (idx=0; idx <= (S27K_SEARCHSIZE - 4); idx += 2) {
@@ -1213,18 +1257,18 @@ int cmd_guesskey(int argc, char **argv) {
 	}
 
 	printf("key still not found. Maybe it's the one stored at ffff8416 anyway: 0x%08X ?\n"
-			"the sid36 key is still unknown though. Good luck.\n", (unsigned) maybe_8416);
+	       "the sid36 key is still unknown though. Good luck.\n", (unsigned) maybe_8416);
 	return CMD_FAILED;
 
 guesskey_found:
 	gkeyset = nisecu.keyset;
 	printf("keyset %08X found @ 0x%08X and saved !\n", gkeyset->s27k, foundaddr);
-				return CMD_OK;
+	return CMD_OK;
 }
 
 
 
-#define KERNEL_MAXSIZE_SUB 8*1024U	//For SH7058, Subaru requires it to fit between 0xFFFF3000 and 0xFFFF5000
+#define KERNEL_MAXSIZE_SUB 8*1024U  //For SH7058, Subaru requires it to fit between 0xFFFF3000 and 0xFFFF5000
 
 /* Does a complete SID 27 + 34 + 36 + 31 sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 4 bytes to make SID36 happy
@@ -1232,7 +1276,7 @@ guesskey_found:
 int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
 	uint32_t file_len, pl_len, load_addr;
 	FILE *fpl;
-	uint8_t *pl_encr;	//encrypted payload buffer
+	uint8_t *pl_encr;   //encrypted payload buffer
 	uint8_t cks_bypass[4] = { 0x00, 0x00, 0x5A, 0xA5 };  //required checksum
 	struct diag_serial_settings set;
 	int errval;
@@ -1243,17 +1287,17 @@ int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
 		return CMD_FAILED;
 	}
 	switch (fdt->mctype) {
-		case SH7055:
-			load_addr = 0xFFFF6000;
-			break;
-		case SH7058:
-			load_addr = 0xFFFF3000;
-			break;
-		default:
-			printf("For Subaru, kernel load and run only supported for SH7055S or SH7058\n");
-			return CMD_FAILED;
+	case SH7055:
+		load_addr = 0xFFFF6000;
+		break;
+	case SH7058:
+		load_addr = 0xFFFF3000;
+		break;
+	default:
+		printf("For Subaru, kernel load and run only supported for SH7055S or SH7058\n");
+		return CMD_FAILED;
 	}
-		
+
 	if (npstate != NP_NORMALCONN) {
 		printf("Must be connected normally (nc command) !\n");
 		return CMD_FAILED;
@@ -1270,9 +1314,9 @@ int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
 	printf("File Len %d Payload Len %d\n", file_len, pl_len);
 
 	if (pl_len >= KERNEL_MAXSIZE_SUB) {
-		printf(	"***************** warning : large kernel detected *****************\n"
-				"That file seems way too big (%lu bytes) to be a typical kernel.\n"
-				"Trying anyway, but you might be using an invalid/corrupt file", (unsigned long) pl_len);
+		printf( "***************** warning : large kernel detected *****************\n"
+		        "That file seems way too big (%lu bytes) to be a typical kernel.\n"
+		        "Trying anyway, but you might be using an invalid/corrupt file", (unsigned long) pl_len);
 	}
 
 	if (diag_malloc(&pl_encr, pl_len)) {
@@ -1392,7 +1436,7 @@ badexit:
 }
 
 
-#define KERNEL_MAXSIZE 10*1024U	//warn for kernels larger than this
+#define KERNEL_MAXSIZE 10*1024U //warn for kernels larger than this
 
 /* Does a complete SID 27 + 34 + 36 + BF sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 32 bytes to make SID36 happy
@@ -1405,7 +1449,7 @@ int cmd_runkernel(int argc, char **argv) {
 	uint32_t pl_len;
 
 	FILE *fpl;
-	uint8_t *pl_encr;	//encrypted payload buffer
+	uint8_t *pl_encr;   //encrypted payload buffer
 
 	if (argc != 2) {
 		return CMD_USAGE;
@@ -1435,9 +1479,9 @@ int cmd_runkernel(int argc, char **argv) {
 	pl_len = (file_len + 31) & ~31;
 
 	if (pl_len >= KERNEL_MAXSIZE) {
-		printf(	"***************** warning : large kernel detected *****************\n"
-				"That file seems way too big (%lu bytes) to be a typical kernel.\n"
-				"Trying anyway, but you might be using an invalid/corrupt file", (unsigned long) pl_len);
+		printf( "***************** warning : large kernel detected *****************\n"
+		        "That file seems way too big (%lu bytes) to be a typical kernel.\n"
+		        "Trying anyway, but you might be using an invalid/corrupt file", (unsigned long) pl_len);
 	}
 
 	if (diag_malloc(&pl_encr, pl_len)) {
@@ -1530,9 +1574,9 @@ badexit:
 static int npkern_init(void) {
 	struct diag_serial_settings set;
 	struct diag_l2_14230 *dlproto;
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
 
 	nisreq.data=txdata;
@@ -1584,9 +1628,9 @@ static int npkern_init(void) {
  * ret 0 if ok
  */
 static int npk_RMBA(uint8_t *dest, uint32_t addr, uint32_t len) {
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
-	struct diag_msg *rxmsg=NULL;	//pointer to the reply
+	uint8_t txdata[64]; //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
+	struct diag_msg *rxmsg=NULL;    //pointer to the reply
 	int errval;
 
 	nisreq.data=txdata;
@@ -1597,7 +1641,7 @@ static int npk_RMBA(uint8_t *dest, uint32_t addr, uint32_t len) {
 	bool not_RAM = !start_RAM;
 
 	if (((start_ROM) && ((addr + len) > 0x800000)) ||
-		(not_ROM && not_RAM)) {
+	    (not_ROM && not_RAM)) {
 		printf("npk RMBA addr out of bounds\n");
 		return -1;
 	}
@@ -1611,7 +1655,9 @@ static int npk_RMBA(uint8_t *dest, uint32_t addr, uint32_t len) {
 		txdata[2] = addr >> 8;
 		txdata[3] = addr >> 0;
 		curlen = len;
-		if (curlen > 251) curlen = 251;	//SID 23 limitation
+		if (curlen > 251) {
+			curlen = 251;               //SID 23 limitation
+		}
 		txdata[4] = (uint8_t) curlen;
 
 		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
@@ -1646,36 +1692,36 @@ static int npk_rxrawdump(uint8_t *dest, uint32_t skip_start, uint32_t numblocks)
 	int errval;
 	uint32_t bi;
 
-	for(bi = 0; bi < numblocks; bi ++) {
+	for(bi = 0; bi < numblocks; bi++) {
 		//loop for every 32-byte response
 
 		/* grab header. Assumes we only get "FMT PRC <data> cks" replies */
 		errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d,
-								rxbuf, 3 + 32, (unsigned) (25 + nparam_rxe.val));
+		                      rxbuf, 3 + 32, (unsigned) (25 + nparam_rxe.val));
 		if (errval < 0) {
 			printf("dl1recv err\n");
 			goto badexit;
 		}
 		uint8_t cks = diag_cks1(rxbuf, 2 + 32);
-		if (	(errval != 35) ||
-				(rxbuf[0] != 0x21) ||
-				(rxbuf[1] != (SID_DUMP + 0x40)) ||
-				(cks != rxbuf[34])) {
+		if (    (errval != 35) ||
+		        (rxbuf[0] != 0x21) ||
+		        (rxbuf[1] != (SID_DUMP + 0x40)) ||
+		        (cks != rxbuf[34])) {
 			printf("no / incomplete / bad response\n");
 			diag_data_dump(stdout, rxbuf, errval);
 			printf("\n");
 			goto badexit;
 		}
-		uint32_t datapos = 2;	//position inside rxbuf
+		uint32_t datapos = 2;   //position inside rxbuf
 		if (skip_start) {
-			datapos += skip_start;	//because start addr wasn't aligned
+			datapos += skip_start;  //because start addr wasn't aligned
 			skip_start = 0;
 		}
 
 		uint32_t cplen = 34 - datapos;
 		memcpy(dest, &rxbuf[datapos], cplen);
 		dest += cplen;
-	}	//for
+	}   //for
 	return 0;
 
 badexit:
@@ -1689,15 +1735,17 @@ badexit:
  */
 static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 
-	uint8_t txdata[64];	//data for nisreq
-	struct diag_msg nisreq={0};	//request to send
+	uint8_t txdata[64]; //data for nisreq
+	struct diag_msg nisreq={0}; //request to send
 	int errval;
 
 	bool ram = 0;
 
 	nisreq.data=txdata;
 
-	if (start > 0xFF800000) ram = 1;
+	if (start > 0xFF800000) {
+		ram = 1;
+	}
 
 	if (ram && eep) {
 		printf("bad args\n");
@@ -1709,14 +1757,14 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 		goto badexit;
 	}
 
-	uint32_t skip_start = start & (32 - 1);	//if unaligned, we'll be receiving this many extra bytes
+	uint32_t skip_start = start & (32 - 1); //if unaligned, we'll be receiving this many extra bytes
 	uint32_t iter_addr = start - skip_start;
 	uint32_t willget = (skip_start + len + 31) & ~(32 - 1);
-	uint32_t len_done = 0;	//total data written to file
+	uint32_t len_done = 0;  //total data written to file
 
 	txdata[0] = SID_DUMP;
 	txdata[1] = eep? SID_DUMP_EEPROM : SID_DUMP_ROM;
-#define NP10_MAXBLKS	8	//# of blocks to request per loop. Too high might flood us
+#define NP10_MAXBLKS    8   //# of blocks to request per loop. Too high might flood us
 	nisreq.len = 6;
 
 	unsigned t0 = diag_os_getms();
@@ -1729,17 +1777,23 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 		unsigned long chrono;
 
 		chrono = diag_os_getms() - t0;
-		if (!chrono) chrono += 1;
-		curspeed = 1000 * len_done / chrono;	//avg B/s
-		if (!curspeed) curspeed += 1;
-		tleft = (willget / curspeed) % 9999;	//s
+		if (!chrono) {
+			chrono += 1;
+		}
+		curspeed = 1000 * len_done / chrono;    //avg B/s
+		if (!curspeed) {
+			curspeed += 1;
+		}
+		tleft = (willget / curspeed) % 9999;    //s
 		printf("\rnpk dump @ 0x%08X, %5u B/s, %4u s remaining\t", iter_addr, curspeed, tleft);
 		fflush(stdout);
 
 		numblocks = willget / 32;
 
-		if (numblocks > NP10_MAXBLKS) numblocks = NP10_MAXBLKS;	//ceil
+		if (numblocks > NP10_MAXBLKS) {
+			numblocks = NP10_MAXBLKS;                           //ceil
 
+		}
 		txdata[2] = numblocks >> 8;
 		txdata[3] = numblocks >> 0;
 
@@ -1766,11 +1820,11 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 		}
 
 		/* don't count skipped first bytes */
-		uint32_t cplen = (numblocks * 32) - skip_start;	//this is the actual # of valid bytes in buf[]
+		uint32_t cplen = (numblocks * 32) - skip_start; //this is the actual # of valid bytes in buf[]
 		skip_start = 0;
 
 		/* and drop extra bytes at the end */
-		uint32_t extrabytes = (cplen + len_done);	//hypothetical new length
+		uint32_t extrabytes = (cplen + len_done);   //hypothetical new length
 		if (extrabytes > len) {
 			cplen -= (extrabytes - len);
 			//thus, (len_done + cplen) will not exceed len
@@ -1786,7 +1840,7 @@ static int npk_dump(FILE *fpl, uint32_t start, uint32_t len, bool eep) {
 		iter_addr += (numblocks * 32);
 		willget -= (numblocks * 32);
 
-	}	//while
+	}   //while
 	printf("\n");
 	return 0;
 
@@ -1802,11 +1856,11 @@ badexit:
 int cmd_flblock(int argc, char **argv) {
 	const struct flashdev_t *fdt = nisecu.flashdev;
 
-	uint8_t *newdata;	//block data will be copied in this
+	uint8_t *newdata;   //block data will be copied in this
 
 	unsigned blockno;
 
-	bool practice = 1;	//if set, disable modification to flash
+	bool practice = 1;  //if set, disable modification to flash
 
 	if ((argc < 3) || (argc > 4)) {
 		return CMD_USAGE;
@@ -1831,13 +1885,17 @@ int cmd_flblock(int argc, char **argv) {
 
 	newdata = load_rom(argv[1], fdt->romsize);
 
-	if (!newdata) return CMD_FAILED;
+	if (!newdata) {
+		return CMD_FAILED;
+	}
 
 	if (argc == 4) {
-		if (argv[3][0] == 'Y') printf("*** FLASH MAY BE MODIFIED ***\n");
-		(void) diag_os_ipending();	//must be done outside the loop first
+		if (argv[3][0] == 'Y') {
+			printf("*** FLASH MAY BE MODIFIED ***\n");
+		}
+		(void) diag_os_ipending();  //must be done outside the loop first
 		printf("*** Last chance : operation will be safely aborted in 3 seconds. ***\n"
-				"*** Press ENTER to MODIFY FLASH ***\n");
+		       "*** Press ENTER to MODIFY FLASH ***\n");
 		diag_os_millisleep(3500);
 		if (diag_os_ipending()) {
 			printf("Proceeding with flash process.\n");
@@ -1860,7 +1918,7 @@ int cmd_flblock(int argc, char **argv) {
 	if (reflash_block(&newdata[bstart], fdt, blockno, practice) == CMD_OK) {
 		printf("Reflash complete.\n");
 		free(newdata);
-		npkern_init();	//forces the kernel to disable write mode
+		npkern_init();  //forces the kernel to disable write mode
 		return CMD_OK;
 	}
 
@@ -1875,7 +1933,7 @@ badexit:
 int cmd_npt(int argc, char **argv) {
 	unsigned testnum;
 
-	uint32_t scode;	//for SID27
+	uint32_t scode; //for SID27
 
 	if ((argc <=1) || (sscanf(argv[1],"%u", &testnum) != 1)) {
 		printf("Bad args\n");
@@ -1907,12 +1965,12 @@ int cmd_npt(int argc, char **argv) {
 		return sid27_unlock(1, scode);
 	case 6:
 		return sid27_unlock(2, 0);
-		break;	//case 6,7 (sid27)
+		break;  //case 6,7 (sid27)
 	default:
 		printf("test # invalid or deprecated\n");
 		return CMD_USAGE;
 		break;
-	}	//switch testnum
+	}   //switch testnum
 
 
 	return CMD_OK;
@@ -1936,7 +1994,7 @@ int cmd_kspeed(int argc, char **argv) {
 	if (set_kernel_speed(newspeed)) {
 		npkern_init();
 		printf("Kernel did not accept new speed %ubps, try another speed or \"initk\"\n",
-				(unsigned) newspeed);
+		       (unsigned) newspeed);
 		return CMD_FAILED;
 	}
 
@@ -1945,7 +2003,7 @@ int cmd_kspeed(int argc, char **argv) {
 
 	if (npkern_init()) {
 		printf("Failed to re-initialize kernel at new speed %ubps, try another speed or \"initk\"\n",
-				(unsigned) newspeed);
+		       (unsigned) newspeed);
 		diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
 		return CMD_FAILED;
 	}
@@ -1958,7 +2016,7 @@ int cmd_kspeed(int argc, char **argv) {
 
 /* flverif <file> */
 int cmd_flverif(int argc, char **argv) {
-	uint8_t *newdata;	//file will be copied to this
+	uint8_t *newdata;   //file will be copied to this
 	const struct flashdev_t *fdt = nisecu.flashdev;
 	bool *block_modified;
 
@@ -1977,7 +2035,9 @@ int cmd_flverif(int argc, char **argv) {
 	}
 
 	newdata = load_rom(argv[1], fdt->romsize);
-	if (!newdata) return CMD_FAILED;
+	if (!newdata) {
+		return CMD_FAILED;
+	}
 
 
 	if (diag_calloc(&block_modified, fdt->numblocks)) {
@@ -2011,7 +2071,7 @@ badexit_nofree:
 
 /* flrom <newrom> [<oldrom>] : flash whole ROM */
 int cmd_flrom(int argc, char **argv) {
-	uint8_t *newdata;	//file will be copied to this
+	uint8_t *newdata;   //file will be copied to this
 	u8 *oldrom;
 
 	const struct flashdev_t *fdt = nisecu.flashdev;
@@ -2034,7 +2094,9 @@ int cmd_flrom(int argc, char **argv) {
 	oldrom = NULL;
 	if (argc == 3) {
 		oldrom = load_rom(argv[2], fdt->romsize);
-		if (!oldrom) return CMD_FAILED;
+		if (!oldrom) {
+			return CMD_FAILED;
+		}
 	}
 
 	newdata = load_rom(argv[1], fdt->romsize);
@@ -2064,9 +2126,9 @@ int cmd_flrom(int argc, char **argv) {
 	printf("(total: %u)\n", bcnt);
 
 	printf("\n\ty : To reflash the blocks listed above, enter 'y'\n"
-			"\tf : to reflash the whole ROM\n"
-			"\tp : to do a dry run (practice mode) without modifying ROM contents\n"
-			"\tn : To abort/cancel, enter 'n'\n");
+	       "\tf : to reflash the whole ROM\n"
+	       "\tp : to do a dry run (practice mode) without modifying ROM contents\n"
+	       "\tn : To abort/cancel, enter 'n'\n");
 
 	char *inp = basic_get_input("> ", stdin);
 	bool practice = 1;
@@ -2077,7 +2139,7 @@ int cmd_flrom(int argc, char **argv) {
 		break;
 	case 'p':
 		printf("reflashing selected blocks (dry run). Note, some (harmless) write verification errors WILL\n"
-				"occur if there are \"modified blocks\" ! (i.e. ROM file differs from ECU ROM)\n");
+		       "occur if there are \"modified blocks\" ! (i.e. ROM file differs from ECU ROM)\n");
 		practice = 1;
 		break;
 	case 'f':
@@ -2096,7 +2158,9 @@ int cmd_flrom(int argc, char **argv) {
 
 	for (blockno = 0; blockno < fdt->numblocks; blockno++) {
 		u32 bstart;
-		if (!block_modified[blockno]) continue;
+		if (!block_modified[blockno]) {
+			continue;
+		}
 
 		bstart = fdt->fblocks[blockno].start;
 		printf("\tBlock %02u\n", blockno);
