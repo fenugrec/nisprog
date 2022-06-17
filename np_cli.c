@@ -242,7 +242,7 @@ void autoselect_keyset(void) {
 
 	printf("Key candidate\tdist (smaller is better)\n");
 	for (i = 0; i < KEY_CANDIDATES; i++) {
-		printf("%d: 0x%08lX\t%d\n",i, (unsigned long) kcs[i].key, kcs[i].dist);
+		printf("%u: 0x%08lX\t%d\n",i, (unsigned long) kcs[i].key, kcs[i].dist);
 	}
 	printf("\n");
 	// TODO : allow user selection
@@ -417,7 +417,7 @@ int cmd_npconn(int argc, char **argv) {
 	                                     flags, global_cfg.speed, global_cfg.tgt, global_cfg.src);
 
 	if (d_conn == NULL) {
-		rv=diag_geterr();
+		(void) diag_geterr();
 		diag_l2_close(dl0d);
 		printf("L2 StartComms failed\n");
 		return CMD_FAILED;
@@ -504,7 +504,7 @@ int cmd_spconn(int argc, char **argv) {
 	                                     flags, global_cfg.speed, global_cfg.tgt, global_cfg.src);
 
 	if (d_conn == NULL) {
-		rv=diag_geterr();
+		(void) diag_geterr();
 		diag_l2_close(dl0d);
 		printf("L2 StartComms failed\n");
 		return CMD_FAILED;
@@ -835,7 +835,7 @@ static int dump_fast(FILE *outf, const uint32_t start, uint32_t len) {
 			                    hackbuf, 4, (unsigned) (25 + nparam_rxe.val));
 			if (errval == 4) {
 				//try to find 0xEC in the first bytes:
-				for (i=0; i<=3 && i<errval; i++) {
+				for (i=0; i<=3; i++) {
 					if (hackbuf[i] == 0xEC) {
 						rqok=1;
 						break;
@@ -1056,9 +1056,7 @@ static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 		dest = &dest[linecur];
 		goodbytes = sent;
 
-		if (rxmsg) {
-			diag_freemsg(rxmsg);
-		}
+		diag_freemsg(rxmsg);
 
 		linecur=0;
 
@@ -1311,7 +1309,7 @@ int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
 	file_len = flen(fpl);
 	/* pad up to next multiple of 4 */
 	pl_len = (file_len + 3) & ~3;
-	printf("File Len %d Payload Len %d\n", file_len, pl_len);
+	printf("File Len %u Payload Len %u\n", file_len, pl_len);
 
 	if (pl_len >= KERNEL_MAXSIZE_SUB) {
 		printf( "***************** warning : large kernel detected *****************\n"

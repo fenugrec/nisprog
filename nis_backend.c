@@ -64,7 +64,7 @@ static void genkey2(const uint8_t *seed8, uint8_t *key) {
 	ecx |= (seed>>11 & 1)<<2 | (seed>>2 & 1)<<1 | (seed>>5 & 1);
 	ecx += 0x1F;
 
-	if (ecx <= 0) {
+	if (((int32_t) ecx) <= 0) {
 		printf("problem !!\n");
 		return;
 	}

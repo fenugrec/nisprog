@@ -386,10 +386,7 @@ static int npk_raw_flashblock(const uint8_t *src, uint32_t start, uint32_t len) 
 
 			int needed = 1 + rxbuf[0] - errval;
 			if (needed > 0) {
-				errval = diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, &rxbuf[errval], needed, 300);
-			}
-			if (errval < 0) {
-				errval = 0;             //floor
+				(void) diag_l1_recv(global_l2_conn->diag_link->l2_dl0d, &rxbuf[errval], needed, 300);
 			}
 			printf("%s\n", decode_nrc(&rxbuf[1]));
 			(void) diag_l2_ioctl(global_l2_conn, DIAG_IOCTL_IFLUSH, NULL);
