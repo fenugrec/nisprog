@@ -1209,8 +1209,8 @@ int cmd_guesskey(int argc, char **argv) {
 
 	rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
 	if (rxmsg==NULL) {
-		return -1;
 		printf("couldn't 2701\n");
+		return -1;
 	}
 	diag_freemsg(rxmsg);
 
