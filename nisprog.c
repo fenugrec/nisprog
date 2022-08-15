@@ -99,6 +99,8 @@ int main(int argc, char **argv) {
 	}
 
 	printf("\n**************** %s v%s-%s ****************\n", NP_PROGNAME, NP_VERSION, GIT_REV);
+	printf("%s: Type HELP for a list of commands; \"debug ?\" to show debugging options.\n", NP_PROGNAME);
+	printf("%s: **** IMPORTANT : this is beta software ! Use at your own risk.\n", SCANTOOL_PROGNAME);
 
 	enter_cli(NP_PROGNAME, startfile, np_cmdtable);
 
