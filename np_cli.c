@@ -126,7 +126,7 @@ int cmd_npconf(int argc, char **argv) {
 	}
 
 	if (helping) {
-		return CMD_OK;
+		return CMD_USAGE;
 	}
 
 	if (!found) {
@@ -292,7 +292,7 @@ int cmd_setdev(int argc, char **argv) {
 		}
 	}
 	if (helping) {
-		return CMD_OK;
+		return CMD_USAGE;
 	}
 
 	printf("Invalid device, see list with \"setdev ?\"\n");
@@ -1271,13 +1271,17 @@ guesskey_found:
 /* Does a complete SID 27 + 34 + 36 + 31 sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 4 bytes to make SID36 happy
  */
-int cmd_sprunkernel(UNUSED(int argc), UNUSED(char **argv)) {
+int cmd_sprunkernel(int argc, char **argv) {
 	uint32_t file_len, pl_len, load_addr;
 	FILE *fpl;
 	uint8_t *pl_encr;   //encrypted payload buffer
 	uint8_t cks_bypass[4] = { 0x00, 0x00, 0x5A, 0xA5 };  //required checksum
 	struct diag_serial_settings set;
 	int errval;
+
+	if (argc != 2) {
+		return CMD_USAGE;
+	}
 
 	const struct flashdev_t *fdt = nisecu.flashdev;
 	if (!fdt) {
