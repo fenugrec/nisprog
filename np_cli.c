@@ -2142,9 +2142,15 @@ int cmd_flrom(int argc, char **argv) {
 	       "\tn : To abort/cancel, enter 'n'\n");
 
 	char *inp = basic_get_input("> ", stdin);
+	if (!inp) {
+		//if user feeds an EOF, don't do anything
+		goto badexit;
+	}
+	char answer=inp[0];
+	free(inp);
 
 	bool practice = 1;
-	switch (inp[0]) {
+	switch (answer) {
 	case 'y':
 		printf("reflashing selected blocks.\n");
 		practice = 0;
