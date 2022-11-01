@@ -583,6 +583,31 @@ int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
 		return CMD_OK;
 	}
 
+	if (npstate == NP_NPKCONN) {
+		printf("\n****** Kernel still running on ECU. Do you want to stop it before disconnecting ?\n"
+				"n : \t\t No, just disconnect and let kernel run (usually not what you want)\n"
+				"any other key :\t Yes, stopkernel first (preferred)\n");
+
+		char *inp = basic_get_input("> ", stdin);
+		if (!inp) {
+			//if user feeds an EOF, don't do anything
+			return CMD_FAILED;
+		}
+		char answer=inp[0];
+		free(inp);
+
+		switch (answer) {
+		case 'n':	//fallthrough
+		case 'N':
+			break;
+		default:
+			printf("\n\tStopping kernel and rebooting ECU. To avoid the previous prompt,\n"
+			"\trun 'stopkernel' first.\n");
+			cmd_stopkernel(1, NULL);
+			break;
+		}
+	}
+
 	diag_l2_StopCommunications(global_l2_conn);
 	diag_l2_close(global_dl0d);
 
@@ -607,7 +632,7 @@ int cmd_stopkernel(int argc, UNUSED(char **argv)) {
 		return CMD_USAGE;
 	}
 
-	printf("Resetting ECU and closing connection. You may need to change speed before reconnecting.\n");
+	printf("Resetting ECU and closing connection.\n");
 
 	txdata[0]=SID_RESET;
 	nisreq.len=1;
