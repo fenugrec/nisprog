@@ -1991,24 +1991,26 @@ int cmd_writevin(int argc, char** argv) {
 	for (int idx = 0; idx < VIN_LENGTH; idx++) {
 		txdata[0] = 0x3B;
 		txdata[1] = idx + 0x04; // VIN writing starts at databyte 0x04
-		txdata[2] = toupper(argv[1][idx]);// Converts each character into an ASCII hex value [case insensitive]
+		txdata[2] = toupper(argv[1][idx]);	//make sure each char is uppercase
 		txdata[3] = 0x00; // 0x00 starts the write
 
 		nisreq.len = 4;
 
 		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
 		if (rxmsg == NULL) {
+			return CMD_FAILED;
 		}
 		if ((rxmsg->data[0] != 0x7B) || (rxmsg->len != 2)) {
 			printf("got bad 3B response : ");
 			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 			printf("\n");
 			diag_freemsg(rxmsg);
+			return CMD_FAILED;
 		}
 		diag_freemsg(rxmsg);
 
 
-		// Now repeat and send the complete write databyte 0xFF to finish the write
+		// Now repeat and send the complete write subcommand 0xFF to finish the write
 		txdata[0] = 0x3B;
 		txdata[1] = idx + 0x04;
 		txdata[2] = toupper(argv[1][idx]);
@@ -2018,17 +2020,18 @@ int cmd_writevin(int argc, char** argv) {
 
 		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
 		if (rxmsg == NULL) {
+			return CMD_FAILED;
 		}
 		if ((rxmsg->data[0] != 0x7B) || (rxmsg->len != 2)) {
 			printf("got bad 3B response : ");
 			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
 			printf("\n");
 			diag_freemsg(rxmsg);
+			return CMD_FAILED;
 		}
 		diag_freemsg(rxmsg);
 	}
 
-	// Assume everything went smoothly (Add error handling logic later)
 	printf("VIN updated\n");
 	return CMD_OK;
 }
