@@ -45,6 +45,7 @@ int cmd_setkeys(int argc, char **argv);
 int cmd_kspeed(int argc, char **argv);
 int cmd_runkernel(int argc, char **argv);
 int cmd_stopkernel(int argc, char **argv);
+int cmd_writevin(int argc, char** argv);
 int cmd_initk(int argc, char **argv);
 int cmd_dumpmem(int argc, char **argv);
 int cmd_watch(int argc, char **argv);

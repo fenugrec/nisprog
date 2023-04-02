@@ -113,7 +113,7 @@ badexit:
 	return 1;
 }
 
-const struct cmd_tbl_entry np_cmdtable[]=
+const struct cmd_tbl_entry np_cmdtable[] =
 {
 	{ "spconn", "spconn", "Connect to Subaru ECU with current parameters",
 	  cmd_spconn, 0, NULL},
@@ -131,6 +131,8 @@ const struct cmd_tbl_entry np_cmdtable[]=
 	  cmd_setdev, 0, NULL},
 	{ "gk", "gk", "Attempt to guess keyset",
 	  cmd_guesskey, 0, NULL},
+	{ "writevin", "writevin <vin>", "Writes the VIN to EEPROM.",
+	  cmd_writevin, 0, NULL},
 	{ "setkeys", "setkeys <sid27_key> [<sid36_key>]", "Set ECU keys. Specifying the SID 36 key is optional if the SID 27 key is a known keyset.\n"
 	  "Please consider submitting new keys to be added to the list !\n",
 	  cmd_setkeys, 0, NULL},

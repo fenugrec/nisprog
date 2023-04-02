@@ -8,6 +8,7 @@
  */
 
 
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -1953,6 +1954,85 @@ badexit:
 	free(newdata);
 	return CMD_FAILED;
 }
+
+/** update VIN in onboard eeprom with SID 3B
+ *
+ * Nissan only; ECU needs to be running stock ROM (not npkern)
+ */
+int cmd_writevin(int argc, char** argv) {
+#define VIN_LENGTH 17
+	/*
+		Possible To Do:
+		- Could have it track what byte it's on when writing to give the user a progress visual
+		- Could have it send $09 0x02 to verify that the VIN was sucessfully written (returns 4 messages)
+	*/
+
+	uint8_t txdata[4]; //data for nisreq
+	struct diag_msg nisreq = { 0 }; //request to send
+	struct diag_msg* rxmsg = NULL;
+	int errval;
+
+	nisreq.data = txdata;
+
+	if (argc != 2) {
+		return CMD_USAGE;
+	}
+
+	if (strlen(argv[1]) != VIN_LENGTH) {
+		printf("VIN must be %u characters\n", VIN_LENGTH);
+		return CMD_USAGE;
+	}
+
+	if (npstate != NP_NORMALCONN) {
+		printf("Must be connected normally (nc command) !\n");
+		return CMD_FAILED;
+	}
+
+	for (int idx = 0; idx < VIN_LENGTH; idx++) {
+		txdata[0] = 0x3B;
+		txdata[1] = idx + 0x04; // VIN writing starts at databyte 0x04
+		txdata[2] = toupper(argv[1][idx]);// Converts each character into an ASCII hex value [case insensitive]
+		txdata[3] = 0x00; // 0x00 starts the write
+
+		nisreq.len = 4;
+
+		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+		if (rxmsg == NULL) {
+		}
+		if ((rxmsg->data[0] != 0x7B) || (rxmsg->len != 2)) {
+			printf("got bad 3B response : ");
+			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+			printf("\n");
+			diag_freemsg(rxmsg);
+		}
+		diag_freemsg(rxmsg);
+
+
+		// Now repeat and send the complete write databyte 0xFF to finish the write
+		txdata[0] = 0x3B;
+		txdata[1] = idx + 0x04;
+		txdata[2] = toupper(argv[1][idx]);
+		txdata[3] = 0xFF; // 0xFF completes the write
+
+		nisreq.len = 4;
+
+		rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+		if (rxmsg == NULL) {
+		}
+		if ((rxmsg->data[0] != 0x7B) || (rxmsg->len != 2)) {
+			printf("got bad 3B response : ");
+			diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+			printf("\n");
+			diag_freemsg(rxmsg);
+		}
+		diag_freemsg(rxmsg);
+	}
+
+	// Assume everything went smoothly (Add error handling logic later)
+	printf("VIN updated\n");
+	return CMD_OK;
+}
+
 
 /* collection of numbered test functions - these are the old "np 9" etc functions.
  * stuff in here is doomed to either die or become a normal command
