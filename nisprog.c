@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 	printf("%s: Type HELP for a list of commands; \"debug ?\" to show debugging options.\n", NP_PROGNAME);
 	printf("%s: **** IMPORTANT : this is beta software ! Use at your own risk.\n", SCANTOOL_PROGNAME);
 
-	cli_enter(NP_PROGNAME, startfile, np_cmdtable);
+	scantool_cli(NP_PROGNAME, startfile, np_cmdtable);
 
 goodexit:
 	(void) diag_end();
@@ -168,6 +168,6 @@ const struct cmd_tbl_entry np_cmdtable[] =
 	  cmd_flrom, 0, NULL},
 	{ "npt", "npt [testnum]", "temporary / testing commands. Refer to source code",
 	  cmd_npt, 0, NULL},
-	{ NULL, NULL, NULL, NULL, 0, NULL}
+	CLI_TBL_END
 };
 
