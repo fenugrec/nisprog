@@ -97,7 +97,7 @@ static void update_params(void) {
 
 /* npconf <paramname> <value>
  */
-int cmd_npconf(int argc, char **argv) {
+enum cli_retval cmd_npconf(int argc, char **argv) {
 	struct nparam_t *npt;
 	nparam_val tempval;
 	bool found = 0;
@@ -157,7 +157,7 @@ int cmd_npconf(int argc, char **argv) {
 
 
 /* "dumpmem <file> <start> <len> [eep]" */
-int cmd_dumpmem(int argc, char **argv) {
+enum cli_retval cmd_dumpmem(int argc, char **argv) {
 	u32 start, len;
 	FILE *fpl;
 	bool eep = 0;
@@ -264,7 +264,7 @@ void autoselect_keyset(void) {
 }
 
 /* setdev <device_#> */
-int cmd_setdev(int argc, char **argv) {
+enum cli_retval cmd_setdev(int argc, char **argv) {
 	bool helping = 0;
 	unsigned idx;
 	const struct flashdev_t *fdt = nisecu.flashdev;
@@ -301,7 +301,7 @@ int cmd_setdev(int argc, char **argv) {
 }
 
 /* setkeys <sid27key> [<sid36key1>] */
-int cmd_setkeys(int argc, char **argv) {
+enum cli_retval cmd_setkeys(int argc, char **argv) {
 	const struct keyset_t *pks;
 
 	if (argc == 2) {
@@ -337,7 +337,7 @@ goodexit:
 }
 
 
-int cmd_initk(int argc, char **argv) {
+enum cli_retval cmd_initk(int argc, char **argv) {
 	const char *npk_id;
 
 	(void) argv;
@@ -368,7 +368,7 @@ int cmd_initk(int argc, char **argv) {
 
 
 
-int cmd_npconn(int argc, char **argv) {
+enum cli_retval cmd_npconn(int argc, char **argv) {
 	(void) argv;
 	if (argc > 1) {
 		return CMD_USAGE;
@@ -454,7 +454,7 @@ int cmd_npconn(int argc, char **argv) {
 }
 
 
-int cmd_spconn(int argc, char **argv) {
+enum cli_retval cmd_spconn(int argc, char **argv) {
 	(void) argv;
 	if (argc > 1) {
 		return CMD_USAGE;
@@ -578,7 +578,7 @@ int cmd_spconn(int argc, char **argv) {
 }
 
 
-int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
+enum cli_retval cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
 	if ((npstate == NP_DISC) ||
 	    (global_state == STATE_IDLE)) {
 		return CMD_OK;
@@ -619,7 +619,7 @@ int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
 	return CMD_OK;
 }
 
-int cmd_stopkernel(int argc, UNUSED(char **argv)) {
+enum cli_retval cmd_stopkernel(int argc, UNUSED(char **argv)) {
 	uint8_t txdata[1];
 	struct diag_msg nisreq={0}; //request to send
 	struct diag_msg *rxmsg=NULL;    //pointer to the reply
@@ -1099,7 +1099,7 @@ static uint32_t read_ac(uint8_t *dest, uint32_t addr, uint32_t len) {
 
 //(WIP) watch 4 bytes @ specified addr, using SID AC.
 //
-int cmd_watch(int argc, char **argv) {
+enum cli_retval cmd_watch(int argc, char **argv) {
 	uint32_t addr;
 	uint32_t len;
 	uint8_t wbuf[4];
@@ -1209,7 +1209,7 @@ static bool set_keyset(u32 s27k) {
 #define S27K_SEARCHSIZE 0x80    //search this many bytes at a time
 
 /* attempt to extract sid27 key by dumping RAM progressively. */
-int cmd_guesskey(int argc, char **argv) {
+enum cli_retval cmd_guesskey(int argc, char **argv) {
 	(void) argc;
 	(void) argv;
 	u8 buf[S27K_SEARCHSIZE];
@@ -1297,7 +1297,7 @@ guesskey_found:
 /* Does a complete SID 27 + 34 + 36 + 31 sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 4 bytes to make SID36 happy
  */
-int cmd_sprunkernel(int argc, char **argv) {
+enum cli_retval cmd_sprunkernel(int argc, char **argv) {
 	uint32_t file_len, pl_len, load_addr;
 	FILE *fpl;
 	uint8_t *pl_encr;   //encrypted payload buffer
@@ -1469,7 +1469,7 @@ badexit:
 /* Does a complete SID 27 + 34 + 36 + BF sequence to run the given kernel payload file.
  * Pads the input payload up to multiple of 32 bytes to make SID36 happy
  */
-int cmd_runkernel(int argc, char **argv) {
+enum cli_retval cmd_runkernel(int argc, char **argv) {
 	const struct keyset_t *keyset;
 	uint32_t sid27key;
 	uint32_t sid36key;
@@ -1881,7 +1881,7 @@ badexit:
 
 /* reflash a given block !
  */
-int cmd_flblock(int argc, char **argv) {
+enum cli_retval cmd_flblock(int argc, char **argv) {
 	const struct flashdev_t *fdt = nisecu.flashdev;
 
 	uint8_t *newdata;   //block data will be copied in this
@@ -1959,7 +1959,7 @@ badexit:
  *
  * Nissan only; ECU needs to be running stock ROM (not npkern)
  */
-int cmd_writevin(int argc, char** argv) {
+enum cli_retval cmd_writevin(int argc, char** argv) {
 #define VIN_LENGTH 17
 	/*
 		Possible To Do:
@@ -2040,7 +2040,7 @@ int cmd_writevin(int argc, char** argv) {
 /* collection of numbered test functions - these are the old "np 9" etc functions.
  * stuff in here is doomed to either die or become a normal command
  */
-int cmd_npt(int argc, char **argv) {
+enum cli_retval cmd_npt(int argc, char **argv) {
 	unsigned testnum;
 
 	uint32_t scode; //for SID27
@@ -2088,7 +2088,7 @@ int cmd_npt(int argc, char **argv) {
 
 
 /* kspeed <new_speed> */
-int cmd_kspeed(int argc, char **argv) {
+enum cli_retval cmd_kspeed(int argc, char **argv) {
 
 	if (argc != 2) {
 		return CMD_USAGE;
@@ -2125,7 +2125,7 @@ int cmd_kspeed(int argc, char **argv) {
 
 
 /* flverif <file> */
-int cmd_flverif(int argc, char **argv) {
+enum cli_retval cmd_flverif(int argc, char **argv) {
 	uint8_t *newdata;   //file will be copied to this
 	const struct flashdev_t *fdt = nisecu.flashdev;
 	bool *block_modified;
@@ -2180,7 +2180,7 @@ badexit_nofree:
 }
 
 /* flrom <newrom> [<oldrom>] : flash whole ROM */
-int cmd_flrom(int argc, char **argv) {
+enum cli_retval cmd_flrom(int argc, char **argv) {
 	uint8_t *newdata;   //file will be copied to this
 	u8 *oldrom;
 
