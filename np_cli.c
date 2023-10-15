@@ -589,7 +589,7 @@ int cmd_npdisc(UNUSED(int argc), UNUSED(char **argv)) {
 				"n : \t\t No, just disconnect and let kernel run (usually not what you want)\n"
 				"any other key :\t Yes, stopkernel first (preferred)\n");
 
-		char *inp = basic_get_input("> ", stdin);
+		char *inp = cli_basic_get_input("> ", stdin);
 		if (!inp) {
 			//if user feeds an EOF, don't do anything
 			return CMD_FAILED;
@@ -2249,7 +2249,7 @@ int cmd_flrom(int argc, char **argv) {
 	       "\tp : to do a dry run (practice mode) without modifying ROM contents\n"
 	       "\tn : To abort/cancel, enter 'n'\n");
 
-	char *inp = basic_get_input("> ", stdin);
+	char *inp = cli_basic_get_input("> ", stdin);
 	if (!inp) {
 		//if user feeds an EOF, don't do anything
 		goto badexit;

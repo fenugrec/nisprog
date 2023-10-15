@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 	printf("%s: Type HELP for a list of commands; \"debug ?\" to show debugging options.\n", NP_PROGNAME);
 	printf("%s: **** IMPORTANT : this is beta software ! Use at your own risk.\n", SCANTOOL_PROGNAME);
 
-	enter_cli(NP_PROGNAME, startfile, np_cmdtable);
+	cli_enter(NP_PROGNAME, startfile, np_cmdtable);
 
 goodexit:
 	(void) diag_end();
@@ -120,11 +120,11 @@ const struct cmd_tbl_entry np_cmdtable[] =
 	{ "npconn", "npconn", "Connect to ECU with current parameters",
 	  cmd_npconn, 0, NULL},
 	{ "nc", "nc", "Connect to ECU with current parameters",
-	  cmd_npconn, FLAG_HIDDEN, NULL},
+	  cmd_npconn, CLI_CMD_HIDDEN, NULL},
 	{ "npdisc", "npdisc", "Disconnect from ECU (does not reset the ECU if running a kernel)",
 	  cmd_npdisc, 0, NULL},
 	{ "nd", "nd", "Disconnect from ECU (does not reset the ECU if running a kernel)",
-	  cmd_npdisc, FLAG_HIDDEN, NULL},
+	  cmd_npdisc, CLI_CMD_HIDDEN, NULL},
 	{ "npconf", "npconf <paramname> <value>", "Set some extra parameters",
 	  cmd_npconf, 0, NULL},
 	{ "setdev", "setdev <device>", "Set mcu type",
@@ -155,7 +155,7 @@ const struct cmd_tbl_entry np_cmdtable[] =
 	  "\tdump the entire ROM (must run \"setdev\" first)\n",
 	  cmd_dumpmem, 0, NULL},
 	{ "dm", "dm <file> <start> <#_of_bytes> [eep]", "(see \"dumpmem\")",
-	  cmd_dumpmem, FLAG_HIDDEN, NULL},
+	  cmd_dumpmem, CLI_CMD_HIDDEN, NULL},
 	{ "flverif", "flverif <file>", "Compare <file> against ROM",
 	  cmd_flverif, 0, NULL},
 	{ "flblock", "flblock <romfile> <blockno> [Y]", "Reflash a single block from <romfile>. "
