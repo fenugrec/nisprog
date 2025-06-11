@@ -57,13 +57,16 @@ static struct nparam_t nparam_p3 = {.val = 5, .shortname = "p3", .descr = "P3 ti
 static struct nparam_t nparam_rxe = {.val = 20, .shortname = "rxe", .descr = "Read timeout offset. Adjust to eliminate timeout errors",
 	                                 .min = -20, .max = 500};
 static struct nparam_t nparam_eepr = {.val = 0, .shortname = "eepr", .descr = "eeprom_read() function address",
-	                                  .min = 0, .max = 2048L * 1024};
+									                  .min = 0, .max = 2048L * 1024};
+static struct nparam_t nparam_eepw = {.val = 0, .shortname = "eepw", .descr = "eeprom_write() function address",
+				                            .min = 0, .max = 2048L * 1024};
 static struct nparam_t nparam_kspeed = {.val = NPK_SPEED, .shortname = "kspeed", .descr = "kernel comms speed used by \"initk\" command",
 	                                    .min = 100, .max = 65000};
 static struct nparam_t *nparams[] = {
 	&nparam_p3,
 	&nparam_rxe,
 	&nparam_eepr,
+	&nparam_eepw,
 	&nparam_kspeed,
 	NULL
 };
@@ -2310,4 +2313,331 @@ badexit_nofree:
 	free(oldrom);
 	return CMD_FAILED;
 
+}
+
+// EEPROM-related routines & definitions for ECU HW Type D
+
+#define EE_SIZE 0x1000
+    
+    #define SID_EEPROM 0xBB 
+			    /* format <SID_EEPROM> <RD16> <AH AL>
+				      <SID_EEPROM> <WR16> <AH AL> <DH DL> */
+    #define SID_EE_RD16		0 // use ROM built-in eep_read16()
+    #define SID_EE_WR16		1 // use ROM built-in eep_write16()
+    
+			    /* format <SID_EEPROM> <RD128> <AH AL>
+				      <SID_EEPROM> <WR128> <AH AL> <D127> ... <D0> */
+    #define SID_EE_RD128	3 // use kernel's ee_readBlock(), only 95xxx EEPROMs on SCI2 are supported
+    #define SID_EE_WR128	4 // use kernel's ee_writeBlock(), only 95xxx EEPROMs on SCI2 are supported
+    
+			    /* format <SID_EEPROM> <RD32> <AH AL>
+				      <SID_EEPROM> <WR32> <AH AL> <D3 D2 D1 D0> */
+    #define SID_EE_RD32		5 // use kernel's eep_read32() for 95xxx EEPROMs on SCI2
+    #define SID_EE_WR32		6 // use kernel's eep_write32() for 95xxx EEPROMs on SCI2
+
+int cmd_dmeep(int argc, char **argv) {
+    
+    uint8_t txdata[134];
+    struct diag_msg nisreq = {0};
+    struct diag_msg *rxmsg = NULL;
+    FILE *eefile;
+    int errval, off;
+    
+    if (argc != 2) {
+	return CMD_USAGE;
+    }
+
+    if (npstate != NP_NPKCONN) {
+	printf("Kernel must be running\n");
+	return CMD_FAILED;
+    }
+    
+    if ((eefile = fopen(argv[1], "wb"))==NULL) {
+	printf("Cannot open %s !\n", argv[1]);
+	return CMD_FAILED;
+    }
+    
+    printf("Dumping EEPROM to %s\n", argv[1]);
+    
+    txdata[0] = SID_EEPROM;
+    txdata[1] = SID_EE_RD128;
+    
+    nisreq.len = 4;
+    nisreq.data = txdata;
+    
+    for (off = 0; off < EE_SIZE; off +=128) {
+	txdata[2] = (uint8_t) (off >> 8) & 0xFF;
+	txdata[3] = (uint8_t) off & 0xFF;
+	
+	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+	
+	if (rxmsg==NULL) return CMD_FAILED;
+	if (rxmsg->len !=129) {
+	    printf("wrong reply len %d\n", rxmsg->len);
+	    diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+	    printf("\n");
+	    return CMD_FAILED;
+	}
+	
+	if (rxmsg->data[0] != (SID_EEPROM + 0x40)) {
+	    printf("EEPROM read failed\n");
+	    return CMD_FAILED;
+	}
+	
+	fwrite(&rxmsg->data[1], 1, 128, eefile);
+	printf("\r %d%%", ((off + 128)*100)/EE_SIZE);
+    }
+    printf("\nDone.\n");
+    fclose(eefile);
+    return CMD_OK;
+}
+
+int cmd_fleep(int argc, char **argv) {
+    
+    uint8_t txdata[134];
+    struct diag_msg nisreq = {0};
+    struct diag_msg *rxmsg = NULL;
+    FILE *eefile;
+    int errval, off;
+    
+    if (argc != 2) {
+	return CMD_USAGE;
+    }
+
+    if (npstate != NP_NPKCONN) {
+	printf("Kernel must be running\n");
+	return CMD_FAILED;
+    }
+    
+    if ((eefile = fopen(argv[1], "rb"))==NULL) {
+	printf("Cannot open %s !\n", argv[1]);
+	return CMD_FAILED;
+    }
+    
+    printf("Writing %s into EEPROM\n", argv[1]);
+    
+    txdata[0] = SID_EEPROM;
+    txdata[1] = SID_EE_WR128;
+    
+    nisreq.len = 132;
+    nisreq.data = txdata;
+    
+    for (off = 0; off < EE_SIZE; off += 128) {
+	txdata[2] = (uint8_t) (off >> 8) & 0xFF;
+	txdata[3] = (uint8_t) off & 0xFF;
+	fread(&txdata[4], 1, 128, eefile);
+	
+	rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+	if (rxmsg==NULL) return CMD_FAILED;
+	if (rxmsg->data[0] != SID_EEPROM + 0x40) {
+	    printf("EEPROM write error\n");
+	    diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+	    printf("\n");
+	    return CMD_FAILED;
+	} else {
+	    printf("\r %d%%", ((off + 128)*100)/EE_SIZE);
+	}
+    }
+    
+    printf("\nDone.\n");
+    fclose(eefile);
+    return CMD_OK;
+}
+
+int cmd_rdeep(int argc, char **argv) {
+    
+    uint8_t txdata[64];
+    struct diag_msg nisreq = {0};
+    struct diag_msg *rxmsg = NULL;
+    
+    int errval;
+    
+    if (argc != 2) {
+	return CMD_USAGE;
+    }
+    
+    if (!nparam_eepr.val) {
+	printf("Must set eeprom read function address first ! See \"npconf ?\"\n");
+	return CMD_FAILED;
+    }
+    
+    if (set_eepr_addr((u32) nparam_eepr.val)) {
+	printf("could not set eep_read() address!\n");
+	return CMD_FAILED;
+    }
+
+    if (npstate != NP_NPKCONN) {
+	printf("Kernel must be running\n");
+	return CMD_FAILED;
+    }
+    
+
+    
+    txdata[0] = SID_EEPROM;
+    txdata[1] = SID_EE_RD16;
+    
+    txdata[2] = (uint8_t) (htoi(argv[1]) >> 8) & 0xFF;
+    txdata[3] = (uint8_t) htoi(argv[1]) & 0xFF;
+    
+    nisreq.len = 4;
+    nisreq.data = txdata;
+    
+    rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+    
+    if (rxmsg==NULL) return CMD_FAILED;
+    if ((rxmsg->data[0] != SID_EEPROM + 0x40) || (rxmsg->len != 3)) {
+	printf("EEPROM read16() error\n");
+	diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+	printf("\n");
+	return CMD_FAILED;
+    } else {
+	    printf("0x%02x%02x\n", rxmsg->data[1], rxmsg->data[2]);
+	}
+    
+    return CMD_OK;
+}
+
+
+int cmd_wreep(int argc, char **argv) {
+    
+    uint8_t txdata[64];
+    struct diag_msg nisreq = {0};
+    struct diag_msg *rxmsg = NULL;
+    
+    int errval;
+    
+    if (argc != 3) {
+	return CMD_USAGE;
+    }
+    
+    if (!nparam_eepw.val) {
+	printf("Must set eeprom write function address first ! See \"npconf ?\"\n");
+	return CMD_FAILED;
+    }
+    
+    if (npstate != NP_NPKCONN) {
+	printf("Kernel must be running\n");
+	return CMD_FAILED;
+    }
+    
+    if (set_eepw_addr((u32) nparam_eepw.val)) {
+	printf("could not set eep_write() address!\n");
+	return CMD_FAILED;
+    }
+	
+    
+    txdata[0] = SID_EEPROM;
+    txdata[1] = SID_EE_WR16;
+    
+    txdata[2] = (uint8_t) (htoi(argv[1]) >> 8) & 0xFF;
+    txdata[3] = (uint8_t) htoi(argv[1]) & 0xFF;
+    
+    txdata[4] = (uint8_t) (htoi(argv[2]) >> 8) & 0xFF;
+    txdata[5] = (uint8_t) htoi(argv[2]) & 0xFF;
+	
+    nisreq.len = 6;
+    nisreq.data = txdata;
+    
+    rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+    
+    if (rxmsg==NULL) return CMD_FAILED;
+    if (rxmsg->data[0] != SID_EEPROM + 0x40)  {
+	    printf("EEPROM write16() error\n");
+	    diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+	    printf("\n");
+	    return CMD_FAILED;
+	} else {
+	    printf("Written OK\n");
+	}
+    
+    return CMD_OK;	
+}
+
+int cmd_rdeep32 (int argc, char **argv) {
+    
+    uint8_t txdata[64];
+    struct diag_msg nisreq = {0};
+    struct diag_msg *rxmsg = NULL;
+    
+    int errval;
+    
+    if (argc != 2) {
+	return CMD_USAGE;
+    }
+
+    if (npstate != NP_NPKCONN) {
+	printf("Kernel must be running\n");
+	return CMD_FAILED;
+    }
+    
+    txdata[0] = SID_EEPROM;
+    txdata[1] = SID_EE_RD32;
+    
+    txdata[2] = (uint8_t) (htoi(argv[1]) >> 8) & 0xFF;
+    txdata[3] = (uint8_t) htoi(argv[1]) & 0xFF;
+	
+    nisreq.len = 4;
+    nisreq.data = txdata;
+    
+    rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+    
+    if (rxmsg==NULL) return CMD_FAILED;
+	if ((rxmsg->data[0] != SID_EEPROM + 0x40) || (rxmsg->len != 5)) {
+	    printf("EEPROM read32() error\n");
+	    diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+	    printf("\n");
+	    return CMD_FAILED;
+	} else {
+	    printf("0x%02x%02x%02x%02x\n", rxmsg->data[1], rxmsg->data[2], rxmsg->data[3], rxmsg->data[4]);
+	}
+    
+    return CMD_OK;
+}
+
+
+int cmd_wreep32(int argc, char **argv) {
+    
+    uint8_t txdata[64];
+    struct diag_msg nisreq = {0};
+    struct diag_msg *rxmsg = NULL;
+    
+    int errval;
+    
+    if (argc != 3) {
+	return CMD_USAGE;
+    }
+
+    if (npstate != NP_NPKCONN) {
+	printf("Kernel must be running\n");
+	return CMD_FAILED;
+    }
+    
+    txdata[0] = SID_EEPROM;
+    txdata[1] = SID_EE_WR32;
+    
+    txdata[2] = (uint8_t) (htoi(argv[1]) >> 8) & 0xFF;
+    txdata[3] = (uint8_t) htoi(argv[1]) & 0xFF;
+    
+    txdata[4] = (uint8_t) (htoi(argv[2]) >> 24) & 0xFF;
+    txdata[5] = (uint8_t) (htoi(argv[2]) >> 16) & 0xFF;
+    txdata[6] = (uint8_t) (htoi(argv[2]) >> 8) & 0xFF;
+    txdata[7] = (uint8_t) htoi(argv[2]) & 0xFF;
+    
+	
+    nisreq.len = 8;
+    nisreq.data = txdata;
+    
+    rxmsg = diag_l2_request(global_l2_conn, &nisreq, &errval);
+    
+    if (rxmsg==NULL) return CMD_FAILED;
+    if (rxmsg->data[0] != SID_EEPROM + 0x40) {
+	    printf("EEPROM write32() error\n");
+	    diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+	    printf("\n");
+	    return CMD_FAILED;
+	} else {
+	    printf("Written OK\n");
+	}
+    
+    return CMD_OK;	
 }

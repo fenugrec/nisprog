@@ -1,3 +1,5 @@
 .vscode/
 build/
+build_win/
+build_lin/
 /.vs

@@ -60,4 +60,11 @@ enum cli_retval cmd_npt(int argc, char **argv);
 enum cli_retval cmd_spconn(int argc, char **argv);
 enum cli_retval cmd_sprunkernel(int argc, char **argv);
 
+int cmd_fleep(int argc, char **argv);
+int cmd_dmeep(int argc, char **argv);
+int cmd_wreep(int argc, char **argv);
+int cmd_rdeep(int argc, char **argv);
+int cmd_wreep32(int argc, char **argv);
+int cmd_rdeep32(int argc, char **argv);
+
 #endif
