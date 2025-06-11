@@ -72,4 +72,6 @@ int sid37(uint16_t cks);
 int sidBF(void);
 
 
+int set_eepw_addr(uint32_t addr);
+
 #endif

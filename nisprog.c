@@ -162,6 +162,18 @@ const struct cmd_tbl_entry np_cmdtable[]=
 							"If <orig_rom> is specified, it is used to select which blocks to reflash instead of the normal CRC comparison.\n"
 							"ex.: \"flrom newrom.bin\"\n",
 			cmd_flrom, 0, NULL},
+		{ "fleep", "fleep <eepfile>", "writes <filename> to ECU's EEPROM",
+	    cmd_fleep, 0, NULL},
+    { "dmeep", "dmeep <eepfile>", "dumps ECU's EEPROM contents to <filename>",
+	    cmd_dmeep, 0, NULL},
+    { "wreep", "wreep <addr> <value>", "writes <value> at <addr> in the ECU EEPROM using ROM built-in ee_write16() (its offset must be specified first!)",
+	    cmd_wreep, 0, NULL},
+    { "rdeep", "rdeep <addr>", "reads uint16_t value from <addr> offset in the ECU EEPROM using ROM built-in ee_write16() (its offset must be specified first!)",
+	    cmd_rdeep, 0, NULL},
+    { "wreep32", "wreep32 <addr> <value>", "writes <DWORD value> at <addr> in the ECU EEPROM",
+	    cmd_wreep32, 0, NULL},
+    { "rdeep32", "rdeep32 <addr>", "reads DWORD value from <addr> offset in the ECU EEPROM",
+	    cmd_rdeep32, 0, NULL},
 	{ "npt", "npt [testnum]", "temporary / testing commands. Refer to source code",
 			cmd_npt, 0, NULL},
 	{ NULL, NULL, NULL, NULL, 0, NULL}

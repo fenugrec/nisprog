@@ -431,3 +431,40 @@ static const char *decode_nrc(uint8_t *rxdata) {
 	}
 	return descr;
 }
+
+int set_eepw_addr(uint32_t addr) {
+    struct diag_msg nisreq={0};	//request to send
+    struct diag_msg *rxmsg=NULL;	//pointer to the reply
+    uint8_t txdata[8];	//data for nisreq
+
+    int errval;
+
+    if (npstate != NP_NPKCONN) {
+	printf("kernel not initialized - try \"runkernel\" or \"initk\"\n");
+    }
+
+    nisreq.data=txdata;	//super very essential !
+
+    //SID_CONF_SETEEPR 0x05	/* set eeprom_write() function address <SID_CONF> <SID_CONF_SETEEPR> <AH> <AM> <AL> */
+    txdata[0] = 0xBE;
+    txdata[1] = 0x05;
+    txdata[2] = (addr >> 16) & 0xff;
+    txdata[3] = (addr >> 8) & 0xff;
+    txdata[4] = (addr >> 0) & 0xff;
+    nisreq.len=5;
+
+    rxmsg=diag_l2_request(global_l2_conn, &nisreq, &errval);
+    if (rxmsg==NULL)
+	return -1;
+    if (rxmsg->data[0] != 0xFE) {
+	printf("got bad BE response : ");
+	diag_data_dump(stdout, rxmsg->data, rxmsg->len);
+	printf("\n");
+	diag_freemsg(rxmsg);
+	return -1;
+    }
+
+    diag_freemsg(rxmsg);
+    return 0;
+}
+
