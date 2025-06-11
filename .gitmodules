@@ -1,6 +1,6 @@
 [submodule "freediag"]
 	path = freediag
-	url = https://github.com:vakhtangst/freediag
+	url = https://github.com/vakhtangst/freediag
 [submodule "nissutils"]
 	path = nissutils
-	url = https://github.com:vakhtangst/nissutils
+	url = https://github.com/vakhtangst/nissutils
