@@ -75,7 +75,7 @@ set(L2LIST "iso9141" "iso14230" "raw")
 
 add_subdirectory(freediag external EXCLUDE_FROM_ALL)
 
-
+unset(CMAKE_C_CPPCHECK CACHE)
 
 # Add a custom command that produces version.c, plus
 # a dummy output that's not actually produced, in order
